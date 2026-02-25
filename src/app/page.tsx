@@ -1,65 +1,116 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { HeartPulse, ArrowRight, ShieldCheck, FileText, Activity } from 'lucide-react';
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex flex-col min-h-screen bg-slate-50">
+      <header className="px-6 py-4 flex items-center justify-between border-b bg-white/70 backdrop-blur-md sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <div className="bg-emerald-600 p-2 rounded-lg text-white">
+            <HeartPulse size={24} />
+          </div>
+          <span className="font-bold text-xl tracking-tight text-slate-800">
+            GSP YBM <span className="text-emerald-600">PLN</span>
+          </span>
+        </div>
+        <nav className="flex gap-4">
+          <Link href="/login">
+            <Button variant="ghost" className="font-medium text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50">
+              Login Petugas
+            </Button>
+          </Link>
+          <Link href="/register">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md shadow-emerald-200">
+              Daftar Pasien
+            </Button>
+          </Link>
+        </nav>
+      </header>
+
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative px-6 py-24 md:py-32 flex flex-col items-center text-center overflow-hidden">
+          <div className="absolute top-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-100 via-slate-50 to-slate-50 -z-10" />
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/80 text-emerald-800 text-sm font-medium mb-8 border border-emerald-200">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Sistem Digitalisasi Terpadu
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 max-w-4xl mb-6">
+            Layanan <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">Griya Singgah</span> Pasien
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mb-10 leading-relaxed">
+            Portal pendataan terintegrasi untuk pasien mustahik YBM PLN. Daftar dari mana saja, verifikasi lebih cepat, dan dapatkan pelayanan maksimal.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Link href="/register">
+              <Button size="lg" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 h-14 px-8 text-base shadow-lg shadow-emerald-200 rounded-full">
+                Mulai Pendaftaran
+                <ArrowRight className="ml-2" size={18} />
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base rounded-full border-slate-300 text-slate-700 hover:bg-slate-100">
+                Masuk Sistem
+              </Button>
+            </Link>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="px-6 py-24 bg-white">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">Kemudahan Dalam Satu Platform</h2>
+              <p className="text-slate-600 max-w-2xl mx-auto">
+                Sistem dirancang untuk menyederhanakan alur operasional dari mulai pendaftaran dokumen hingga check-out pasien.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:shadow-lg transition-shadow">
+                <div className="bg-blue-100 w-14 h-14 rounded-xl flex items-center justify-center text-blue-600 mb-6">
+                  <FileText size={28} />
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-800">Verifikasi Dokumen</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Upload dokumen rekam medis, KTP, dan SKTM langsung dari perangkat Anda tanpa perlu datang secara fisik untuk screening awal.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:shadow-lg transition-shadow">
+                <div className="bg-emerald-100 w-14 h-14 rounded-xl flex items-center justify-center text-emerald-600 mb-6">
+                  <ShieldCheck size={28} />
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-800">Pre-Approved YBM</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Sistem 'Pre-Approved' memangkas waktu tunggu dengan menghubungkan Admin YBM untuk memvalidasi kelayakan pasien mustahik.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 hover:shadow-lg transition-shadow">
+                <div className="bg-purple-100 w-14 h-14 rounded-xl flex items-center justify-center text-purple-600 mb-6">
+                  <Activity size={28} />
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-800">Manajemen Kamar</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Denah interaktif untuk melihat ketersediaan kamar, mengelola check-in pasien, dan memantau status penunggu.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
+
+      <footer className="px-6 py-8 border-t bg-white text-center text-slate-500 text-sm">
+        <p>&copy; {new Date().getFullYear()} Yayasan Baitul Maal PLN. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
