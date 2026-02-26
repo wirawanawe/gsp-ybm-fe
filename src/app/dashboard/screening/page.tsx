@@ -1,9 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2 } from 'lucide-react';
+import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2, Upload, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { apiUrl, API_BASE } from '@/lib/api';
+
+const DOC_TYPES = [
+    { id: 'ktp', label: 'KTP Pasien' },
+    { id: 'kk', label: 'Kartu Keluarga (KK)' },
+    { id: 'bpjs', label: 'BPJS' },
+    { id: 'sktm', label: 'SKTM' },
+    { id: 'rujukan', label: 'Rujukan' }
+];
 
 export default function ScreeningPage() {
     const [patients, setPatients] = useState<any[]>([]);
@@ -11,15 +21,112 @@ export default function ScreeningPage() {
     const [selectedPatient, setSelectedPatient] = useState<any>(null);
     const [documents, setDocuments] = useState<any[]>([]);
     const [docsLoading, setDocsLoading] = useState(false);
+    const [susulanFiles, setSusulanFiles] = useState<{ [key: string]: File | null }>({});
+    const [uploading, setUploading] = useState(false);
+
+    const handlePrintRegistration = (patient: any) => {
+        const win = window.open('', '_blank', 'width=800,height=600');
+        if (!win) return;
+
+        const createdDate = new Date(patient.created_at).toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        win.document.write(`
+            <html>
+            <head>
+                <title>Bukti Pendaftaran - ${patient.registration_number}</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; background: #f9fafb; }
+                    .card { max-width: 720px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px 28px; }
+                    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+                    .title { font-size: 18px; font-weight: 700; color: #0f172a; }
+                    .subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
+                    .reg-number { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 13px; font-weight: 700; color: #047857; background: #ecfdf3; padding: 6px 10px; border-radius: 999px; border: 1px solid #bbf7d0; }
+                    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 6px; }
+                    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; font-size: 13px; color: #0f172a; }
+                    .label { font-size: 11px; color: #6b7280; }
+                    .value { font-size: 13px; color: #111827; font-weight: 500; }
+                    .footer { margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; color: #6b7280; }
+                    .note { font-size: 11px; color: #374151; margin-top: 4px; max-width: 360px; }
+                    .stamp { text-align: right; }
+                    .stamp-line { margin-top: 40px; border-top: 1px dashed #9ca3af; width: 180px; margin-left: auto; padding-top: 4px; font-size: 11px; color: #4b5563; }
+                    @media print {
+                        body { background: #ffffff; padding: 0; }
+                        .card { border: none; border-radius: 0; max-width: none; margin: 0; box-shadow: none; }
+                    }
+                </style>
+            </head>
+            <body onload="window.print()">
+                <div class="card">
+                    <div class="header">
+                        <div>
+                            <div class="title">Bukti Pendaftaran Pasien</div>
+                            <div class="subtitle">Diserahkan ke tim pengelola Rumah Singgah sebagai bukti registrasi</div>
+                        </div>
+                        <div class="reg-number">${patient.registration_number}</div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">Data Pasien</div>
+                        <div class="grid">
+                            <div>
+                                <div class="label">Nama Lengkap</div>
+                                <div class="value">${patient.name || '-'}</div>
+                            </div>
+                            <div>
+                                <div class="label">NIK</div>
+                                <div class="value">${patient.nik || '-'}</div>
+                            </div>
+                            <div>
+                                <div class="label">Telepon</div>
+                                <div class="value">${patient.phone || '-'}</div>
+                            </div>
+                            <div>
+                                <div class="label">Tanggal Pendaftaran</div>
+                                <div class="value">${createdDate}</div>
+                            </div>
+                            <div style="grid-column: span 2;">
+                                <div class="label">Alamat</div>
+                                <div class="value">${patient.address || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <div>
+                            <div class="label">Catatan</div>
+                            <div class="note">
+                                Bukti ini dibawa oleh pasien ke Rumah Singgah dan diserahkan kepada tim pengelola
+                                sebagai dasar pencatatan ke Data Pendaftar dan penentuan kamar/penunggu.
+                            </div>
+                        </div>
+                        <div class="stamp">
+                            <div>Tanda tangan petugas screening</div>
+                            <div class="stamp-line">Nama & Paraf</div>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+        win.document.close();
+    };
 
     const fetchPatients = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/patients?status=Pending');
+            const res = await fetch(apiUrl('/api/patients?status=Pending'));
             const data = await res.json();
-            setPatients(data);
+            setPatients(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
+            setPatients([]);
         } finally {
             setLoading(false);
         }
@@ -33,7 +140,7 @@ export default function ScreeningPage() {
         setSelectedPatient(patient);
         setDocsLoading(true);
         try {
-            const res = await fetch(`http://localhost:5000/api/patients/${patient.id}/documents`);
+            const res = await fetch(apiUrl(`/api/patients/${patient.id}/documents`));
             const docs = await res.json();
             setDocuments(docs);
         } catch (err) {
@@ -43,44 +150,79 @@ export default function ScreeningPage() {
         }
     };
 
+    const handleSusulanUpload = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedPatient) return;
+        const filesToSend = Object.entries(susulanFiles).filter(([, f]) => f);
+        if (filesToSend.length === 0) return;
+
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            filesToSend.forEach(([key, file]) => fd.append(key, file!));
+            const res = await fetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`), {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Gagal mengunggah dokumen');
+            setSusulanFiles({});
+            const docsRes = await fetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`));
+            setDocuments(await docsRes.json());
+        } catch (err: any) {
+            alert(err.message || 'Gagal mengunggah dokumen');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handleVerification = async (status: string) => {
         if (!selectedPatient) return;
 
         try {
-            const res = await fetch(`http://localhost:5000/api/patients/${selectedPatient.id}/verify`, {
+            const res = await fetch(apiUrl(`/api/patients/${selectedPatient.id}/verify`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status_verification: status })
             });
+            const data = await res.json();
 
             if (res.ok) {
                 setSelectedPatient(null);
-                fetchPatients(); // Reload list
+                if (status === 'Layak Mustahik') {
+                    toast.success('Pasien diterima. Data akan muncul di Data Pendaftar.', { duration: 4000 });
+                } else {
+                    toast.success('Status pasien diupdate.');
+                }
+                setTimeout(() => window.location.reload(), 800);
+                return;
             }
+            toast.error((data as { message?: string })?.message || 'Verifikasi gagal');
         } catch (err) {
             console.error('Verify error:', err);
+            toast.error('Gagal memanggil API. Pastikan backend berjalan.');
         }
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] gap-6">
+        <div className="flex flex-col min-h-[calc(100vh-8rem)] sm:h-[calc(100vh-8rem)] gap-4 sm:gap-6">
 
-            {/* View Details Modal Overlay - Simplistic implementation */}
+            {/* View Details Modal - Responsive (bottom sheet di mobile) */}
             {selectedPatient && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <FileText className="text-emerald-600" />
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2 truncate pr-2">
+                                <FileText className="text-emerald-600 shrink-0" />
                                 Verifikasi Berkas Pasien
                             </h2>
-                            <button onClick={() => setSelectedPatient(null)} className="text-slate-400 hover:text-slate-700">
+                            <button onClick={() => setSelectedPatient(null)} className="text-slate-400 hover:text-slate-700 shrink-0 p-1">
                                 <XCircle size={24} />
                             </button>
                         </div>
 
-                        <div className="p-6 flex-1 overflow-y-auto">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 
                                 {/* Biodata Sidebar */}
                                 <div className="md:col-span-1 space-y-6">
@@ -120,47 +262,89 @@ export default function ScreeningPage() {
                                             <Loader2 className="animate-spin text-emerald-500" size={32} />
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {documents.length === 0 ? (
-                                                <div className="col-span-2 text-center text-slate-500 py-8 border-2 border-dashed border-slate-200 rounded-xl">
-                                                    Tidak ada berkas yang diunggah.
-                                                </div>
-                                            ) : (
-                                                documents.map(doc => (
-                                                    <div key={doc.id} className="border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-emerald-300 transition-colors group">
-                                                        <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
-                                                            <FileText size={20} />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="font-semibold text-slate-700 text-sm truncate">{doc.document_type}</div>
-                                                            <a
-                                                                href={`http://localhost:5000/${doc.file_path}`}
-                                                                target="_blank"
-                                                                className="text-xs text-emerald-600 font-medium hover:underline flex items-center mt-1"
-                                                            >
-                                                                Lihat Berkas <Eye size={12} className="ml-1" />
-                                                            </a>
-                                                        </div>
+                                        <>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                {documents.length === 0 ? (
+                                                    <div className="col-span-2 text-center text-slate-500 py-6 border-2 border-dashed border-slate-200 rounded-xl">
+                                                        Belum ada berkas. Pasien dapat menyusulkan dokumen di sini.
                                                     </div>
-                                                ))
-                                            )}
-                                        </div>
+                                                ) : (
+                                                    documents.map(doc => (
+                                                        <div key={doc.id} className="border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-emerald-300 transition-colors group">
+                                                            <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
+                                                                <FileText size={20} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-semibold text-slate-700 text-sm truncate">{doc.document_type}</div>
+                                                                <a
+                                                                    href={`${API_BASE}/${doc.file_path}`}
+                                                                    target="_blank"
+                                                                    className="text-xs text-emerald-600 font-medium hover:underline flex items-center mt-1"
+                                                                >
+                                                                    Lihat Berkas <Eye size={12} className="ml-1" />
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+
+                                            {/* Susulan Dokumen - lokasi screening berbeda dengan pendaftaran */}
+                                            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                                <h4 className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
+                                                    <Upload size={16} /> Susulan Dokumen
+                                                </h4>
+                                                <p className="text-xs text-amber-700 mb-3">
+                                                    Pasien lupa membawa dokumen saat pendaftaran? Unggah di sini sebelum verifikasi.
+                                                </p>
+                                                <form onSubmit={handleSusulanUpload} className="flex flex-wrap gap-3">
+                                                    {DOC_TYPES.map(doc => (
+                                                        <div key={doc.id} className="flex items-center gap-2">
+                                                            <Input
+                                                                type="file"
+                                                                accept=".jpg,.jpeg,.png,.pdf"
+                                                                className="hidden"
+                                                                id={`susulan-${doc.id}`}
+                                                                onChange={e => {
+                                                                    const f = e.target.files?.[0];
+                                                                    setSusulanFiles(prev => ({ ...prev, [doc.id]: f || null }));
+                                                                }}
+                                                            />
+                                                            <label
+                                                                htmlFor={`susulan-${doc.id}`}
+                                                                className="cursor-pointer text-xs px-3 py-1.5 rounded-md border border-amber-300 bg-white hover:bg-amber-50 text-amber-800 font-medium"
+                                                            >
+                                                                {susulanFiles[doc.id]?.name || doc.label}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                    <Button
+                                                        type="submit"
+                                                        size="sm"
+                                                        disabled={uploading || !Object.values(susulanFiles).some(Boolean)}
+                                                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8"
+                                                    >
+                                                        {uploading ? 'Mengunggah...' : 'Unggah'}
+                                                    </Button>
+                                                </form>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Action Footer */}
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                        {/* Action Footer - stack on mobile */}
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 shrink-0">
                             <Button
                                 variant="outline"
-                                className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 font-medium h-11 px-6"
+                                className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 font-medium h-11 w-full sm:w-auto sm:px-6"
                                 onClick={() => handleVerification('Rujukan Lain')}
                             >
                                 Rujukan Lain (Tolak)
                             </Button>
                             <Button
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 font-semibold h-11 px-8"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 font-semibold h-11 w-full sm:w-auto sm:px-8"
                                 onClick={() => handleVerification('Layak Mustahik')}
                             >
                                 <CheckCircle size={18} className="mr-2" />
@@ -172,22 +356,22 @@ export default function ScreeningPage() {
             )}
 
             {/* Main Page Layout */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex-1 flex flex-col overflow-hidden">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Verifikasi Pasien Masuk</h1>
-                        <p className="text-slate-600 mt-1">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex-1 flex flex-col overflow-hidden min-h-0">
+                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 truncate">Verifikasi Pasien Masuk</h1>
+                        <p className="text-slate-600 text-sm mt-1 line-clamp-2 sm:line-clamp-none">
                             Daftar pasien baru yang mendaftar online dan menunggu persetujuan (Pre-Approved).
                         </p>
                     </div>
-                    <div className="relative w-full sm:w-64">
+                    <div className="relative w-full sm:w-64 shrink-0">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <Input placeholder="Cari by NIK / Nama..." className="pl-9 h-10 border-slate-200 bg-slate-50 focus:bg-white" />
+                        <Input placeholder="Cari by NIK / Nama..." className="pl-9 h-10 border-slate-200 bg-slate-50 focus:bg-white w-full" />
                     </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-hidden flex-1 flex flex-col">
-                    <div className="overflow-y-auto flex-1 bg-slate-50/30">
+                <div className="border border-slate-200 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
+                    <div className="overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30 min-h-0">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center h-full text-emerald-600">
                                 <Loader2 className="animate-spin mb-4" size={32} />
@@ -202,42 +386,55 @@ export default function ScreeningPage() {
                                 <p className="text-sm mt-1 text-slate-500">Pasien yang baru mendaftar akan muncul di sini.</p>
                             </div>
                         ) : (
-                            <table className="w-full text-left bg-white">
+                            <table className="w-full text-left bg-white min-w-[720px] sm:min-w-0">
                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm">No. Pendaftaran</th>
-                                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm">Nama Pasien / NIK</th>
-                                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm">Tanggal Daftar</th>
-                                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm">Status Awal</th>
-                                        <th className="px-6 py-4 font-semibold text-slate-700 text-sm text-right">Aksi</th>
+                                        <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">No. Pendaftaran</th>
+                                        <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Nama Pasien / NIK</th>
+                                        <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Tanggal Daftar</th>
+                                        <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-slate-700 text-xs sm:text-sm text-center whitespace-nowrap">Bukti Pendaftaran</th>
+                                        <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-slate-700 text-xs sm:text-sm text-center whitespace-nowrap">Status Awal</th>
+                                        <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-slate-700 text-xs sm:text-sm text-right whitespace-nowrap">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {patients.map((p) => (
                                         <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4">
                                                 <span className="font-mono text-xs font-bold text-slate-600">{p.registration_number}</span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-semibold text-slate-800">{p.name}</div>
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4">
+                                                <div className="font-semibold text-slate-800 text-sm">{p.name}</div>
                                                 <div className="text-xs text-slate-500 mt-0.5">{p.nik}</div>
                                             </td>
-                                            <td className="px-6 py-4 text-slate-600 text-sm">
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-600 text-xs sm:text-sm whitespace-nowrap">
                                                 {new Date(p.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                                                <Button
+                                                    onClick={() => handlePrintRegistration(p)}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm text-xs sm:text-sm"
+                                                >
+                                                    <Printer size={14} className="sm:mr-2 shrink-0" />
+                                                    <span className="hidden sm:inline">Print Bukti</span>
+                                                </Button>
+                                            </td>
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4">
                                                 <span className="inline-flex px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded">
                                                     {p.status_verification}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
                                                 <Button
                                                     onClick={() => openPatientDetails(p)}
                                                     variant="outline"
                                                     size="sm"
-                                                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 shadow-sm"
+                                                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 shadow-sm text-xs sm:text-sm"
                                                 >
-                                                    <Eye size={16} className="mr-2" /> Cek Berkas
+                                                    <Eye size={14} className="sm:mr-2 shrink-0" />
+                                                    <span className="hidden sm:inline">Cek Berkas</span>
                                                 </Button>
                                             </td>
                                         </tr>

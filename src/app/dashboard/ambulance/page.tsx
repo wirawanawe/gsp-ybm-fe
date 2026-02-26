@@ -1,87 +1,405 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Plus, Navigation } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Search, Plus, Navigation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { apiUrl } from '@/lib/api';
+
+type Ambulance = {
+    id: number;
+    plate_number: string;
+    vehicle_model: string;
+    status: 'Available' | 'In-Journey' | 'Maintenance';
+};
+
+type AmbulanceLog = {
+    id: number;
+    ambulance_id: number;
+    ambulance_plate: string;
+    destination: string;
+    patient_name: string | null;
+    status: 'In-Journey' | 'Completed' | 'Cancelled';
+    departure_time: string;
+    return_time: string | null;
+};
 
 export default function AmbulancePage() {
-    const [logs] = useState([
-        { id: 1, ambulance: 'B 1234 GSP', destination: 'RSUD Cengkareng', driver: 'Pak Suparmin', status: 'In-Journey', departure_time: '10:00 WIB', return_time: '-' },
-        { id: 2, ambulance: 'B 5678 YBM', destination: 'RSCM Jakarta', driver: 'Pak Agung', status: 'Completed', departure_time: '08:00 WIB', return_time: '11:30 WIB' },
-    ]);
+    const [logs, setLogs] = useState<AmbulanceLog[]>([]);
+    const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isBookingOpen, setIsBookingOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formError, setFormError] = useState('');
+    const [formState, setFormState] = useState<{
+        ambulance_id: string;
+        destination: string;
+        patient_id: string;
+    }>({
+        ambulance_id: '',
+        destination: '',
+        patient_id: ''
+    });
+    const [patients, setPatients] = useState<{ id: number; name: string; registration_number: string }[]>([]);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [logsRes, ambRes] = await Promise.all([
+                fetch(apiUrl('/api/ambulance/logs')),
+                fetch(apiUrl('/api/ambulance'))
+            ]);
+            const logsData = await logsRes.json();
+            const ambData = await ambRes.json();
+            setLogs(Array.isArray(logsData) ? logsData : []);
+            setAmbulances(Array.isArray(ambData) ? ambData : []);
+        } catch (err) {
+            console.error('fetch ambulance data error:', err);
+            setLogs([]);
+            setAmbulances([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // Booking ambulans hanya dari Data Pendaftar (yang boleh masuk rumah singgah)
+    const fetchPatients = async () => {
+        try {
+            const res = await fetch(apiUrl('/api/patients/applicants'));
+            const data = await res.json();
+            setPatients(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('fetch patients error:', err);
+            setPatients([]);
+        }
+    };
+
+    const openBookingModal = () => {
+        fetchPatients();
+        setFormState({ ambulance_id: '', destination: '', patient_id: '' });
+        setFormError('');
+        setIsBookingOpen(true);
+    };
+
+    const availableAmbulances = ambulances.filter(a => a.status === 'Available');
+    const activeCount = ambulances.filter(a => a.status === 'In-Journey').length;
+
+    const handleCreateBooking = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setFormError('');
+        try {
+            const res = await fetch(apiUrl('/api/ambulance/logs'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ambulance_id: Number(formState.ambulance_id),
+                    destination: formState.destination,
+                    patient_id: formState.patient_id ? Number(formState.patient_id) : null
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Gagal membuat booking ambulans');
+            }
+            setIsBookingOpen(false);
+            setFormState({ ambulance_id: '', destination: '', patient_id: '' });
+            window.location.reload();
+        } catch (err: any) {
+            console.error('create booking error:', err);
+            setFormError(err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCompleteTrip = async (logId: number) => {
+        try {
+            const res = await fetch(
+                apiUrl(`/api/ambulance/logs/${logId}/complete`),
+                { method: 'PUT' }
+            );
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Gagal menyelesaikan trip');
+            }
+            window.location.reload();
+        } catch (err) {
+            console.error('complete trip error:', err);
+            alert('Gagal menyelesaikan trip ambulans');
+        }
+    };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col h-[calc(100vh-8rem)]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Logistik & Jadwal Ambulans</h1>
-                    <p className="text-slate-600">Booking perjalanan ambulans untuk rujukan pasien.</p>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)] h-[calc(100vh-8rem)] relative">
+            {/* Modal Booking - Responsive */}
+            {isBookingOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate pr-2">
+                                Booking Ambulans Baru
+                            </h2>
+                            <button
+                                onClick={() => setIsBookingOpen(false)}
+                                className="text-slate-400 hover:text-slate-700 shrink-0 p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateBooking} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                            {formError && (
+                                <div className="mb-3 p-3 rounded-md bg-rose-50 text-rose-700 text-sm border border-rose-200">
+                                    {formError}
+                                </div>
+                            )}
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Pilih Ambulans Tersedia
+                                    </label>
+                                    <select
+                                        className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        value={formState.ambulance_id}
+                                        onChange={e =>
+                                            setFormState(prev => ({
+                                                ...prev,
+                                                ambulance_id: e.target.value
+                                            }))
+                                        }
+                                        required
+                                    >
+                                        <option value="">-- Pilih Ambulans --</option>
+                                        {availableAmbulances.map(a => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.plate_number} ({a.vehicle_model})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Tujuan Perjalanan
+                                    </label>
+                                    <Input
+                                        placeholder="Contoh: RSCM Jakarta"
+                                        value={formState.destination}
+                                        onChange={e =>
+                                            setFormState(prev => ({
+                                                ...prev,
+                                                destination: e.target.value
+                                            }))
+                                        }
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Pilih Pasien (opsional)
+                                    </label>
+                                    <select
+                                        className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        value={formState.patient_id}
+                                        onChange={e =>
+                                            setFormState(prev => ({
+                                                ...prev,
+                                                patient_id: e.target.value
+                                            }))
+                                        }
+                                    >
+                                        <option value="">-- Pilih Pasien Terverifikasi --</option>
+                                        {patients.map(p => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name} (Reg: {p.registration_number})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {patients.length === 0 && (
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            Belum ada pasien dengan status Layak Mustahik
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsBookingOpen(false)}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    {isSubmitting ? 'Menyimpan...' : 'Simpan Booking'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-md shadow-emerald-200">
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8 shrink-0">
+                <div className="min-w-0">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Logistik & Jadwal Ambulans</h1>
+                    <p className="text-slate-600 text-sm mt-1">
+                        Booking perjalanan ambulans untuk rujukan pasien.
+                    </p>
+                </div>
+                <Button
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-md shadow-emerald-200"
+                    onClick={openBookingModal}
+                    disabled={availableAmbulances.length === 0}
+                >
                     <Plus size={18} className="mr-2" />
                     Booking Ambulans Baru
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div className="bg-slate-50 border border-emerald-200 rounded-xl p-6 lg:col-span-1 shadow-sm flex flex-col items-center text-center">
                     <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center text-emerald-600 mb-4">
                         <Navigation size={28} />
                     </div>
-                    <h3 className="font-bold text-slate-800 text-lg mb-1">Armada Aktif</h3>
-                    <p className="text-3xl font-black text-emerald-600 mb-2">2</p>
-                    <span className="text-sm font-medium text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">Tersedia: 1</span>
+                    <h3 className="font-bold text-slate-800 text-lg mb-1">Armada Terdaftar</h3>
+                    <p className="text-3xl font-black text-slate-800 mb-1">{ambulances.length}</p>
+                    <span className="text-xs text-slate-500 mb-1">
+                        Aktif perjalanan: {activeCount}
+                    </span>
+                    <span className="text-sm font-medium text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
+                        Tersedia: {availableAmbulances.length}
+                    </span>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-hidden lg:col-span-3 flex-1 flex flex-col">
-                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                        <h2 className="font-bold text-slate-800">Log Perjalanan Hari Ini</h2>
+                <div className="border border-slate-200 rounded-xl overflow-hidden sm:col-span-2 lg:col-span-3 flex-1 flex flex-col min-h-0">
+                    <div className="bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
+                        <h2 className="font-bold text-slate-800 text-sm sm:text-base">Log Perjalanan</h2>
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <Input placeholder="Cari..." className="pl-9 h-9 border-slate-200" />
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                                size={16}
+                            />
+                            <Input
+                                placeholder="Cari tujuan / nopol..."
+                                className="pl-9 h-9 border-slate-200"
+                            />
                         </div>
                     </div>
-                    <div className="overflow-y-auto flex-1">
-                        <table className="w-full text-left bg-white">
-                            <thead className="bg-white border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Ambulans</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tujuan</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Jam Berangkat</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {logs.map((log) => (
-                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-slate-800">{log.ambulance}</div>
-                                            <div className="text-xs text-slate-500 mt-1">{log.driver}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-700 font-medium">{log.destination}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-slate-800 font-medium">{log.departure_time}</div>
-                                            <div className="text-xs text-slate-500 mt-1">Kembali: {log.return_time}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${log.status === 'In-Journey' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                                                }`}>
-                                                {log.status === 'In-Journey' ? 'Dalam Perjalanan' : 'Selesai'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {log.status === 'In-Journey' && (
-                                                <Button variant="outline" size="sm" className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs h-8">
-                                                    Selesaikan Trip
-                                                </Button>
-                                            )}
-                                        </td>
+                    <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
+                        {loading ? (
+                            <div className="flex items-center justify-center h-full py-10 text-slate-500 gap-3">
+                                <Loader2 className="animate-spin" size={20} />
+                                <span>Memuat log perjalanan...</span>
+                            </div>
+                        ) : logs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full py-10 text-slate-400">
+                                <p className="font-medium text-slate-600">
+                                    Belum ada perjalanan ambulans tercatat.
+                                </p>
+                                <p className="text-sm mt-1">
+                                    Booking ambulans baru untuk memulai log perjalanan.
+                                </p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left bg-white min-w-[640px] sm:min-w-0">
+                                <thead className="bg-white border-b border-slate-200 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">
+                                            Ambulans
+                                        </th>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Tujuan</th>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Waktu</th>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Status</th>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm text-right whitespace-nowrap">Aksi</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {logs.map(log => (
+                                        <tr
+                                            key={log.id}
+                                            className="hover:bg-slate-50/50 transition-colors"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-800">
+                                                    {log.ambulance_plate}
+                                                </div>
+                                                {log.patient_name && (
+                                                    <div className="text-xs text-slate-500 mt-1">
+                                                        Pasien: {log.patient_name}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700 font-medium">
+                                                {log.destination}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm">
+                                                <div className="text-slate-800 font-medium">
+                                                    Berangkat:{' '}
+                                                    {new Date(log.departure_time).toLocaleString(
+                                                        'id-ID',
+                                                        {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        }
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-slate-500 mt-1">
+                                                    Kembali:{' '}
+                                                    {log.return_time
+                                                        ? new Date(
+                                                              log.return_time
+                                                          ).toLocaleString('id-ID', {
+                                                              day: 'numeric',
+                                                              month: 'short',
+                                                              year: 'numeric',
+                                                              hour: '2-digit',
+                                                              minute: '2-digit'
+                                                          })
+                                                        : '-'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span
+                                                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                                                        log.status === 'In-Journey'
+                                                            ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                                            : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                                    }`}
+                                                >
+                                                    {log.status === 'In-Journey'
+                                                        ? 'Dalam Perjalanan'
+                                                        : 'Selesai'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {log.status === 'In-Journey' && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs h-8"
+                                                        onClick={() => handleCompleteTrip(log.id)}
+                                                    >
+                                                        Selesaikan Trip
+                                                    </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>

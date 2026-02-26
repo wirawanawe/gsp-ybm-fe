@@ -7,6 +7,7 @@ import { ArrowLeft, UserPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiUrl } from '@/lib/api';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -23,7 +24,7 @@ export default function LoginPage() {
         const password = formData.get('password') as string;
 
         try {
-            const res = await fetch('http://localhost:5000/api/auth/login', {
+            const res = await fetch(apiUrl('/api/auth/login'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -55,13 +56,13 @@ export default function LoginPage() {
                 Kembali ke Beranda
             </Link>
 
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
-                <div className="text-center mb-8">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 sm:p-8 border border-slate-100 mx-auto">
+                <div className="text-center mb-6 sm:mb-8">
                     <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center text-emerald-600 mx-auto mb-4">
                         <UserPlus size={32} />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-800">Login Sistem Pengelola</h1>
-                    <p className="text-slate-500 mt-2">Masuk untuk mengelola data pasien dan operasional GSP YBM PLN.</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Login Sistem Pengelola</h1>
+                    <p className="text-slate-500 text-sm sm:text-base mt-2">Masuk untuk mengelola data pasien dan operasional GSP YBM PLN.</p>
                 </div>
 
                 {errorMsg && (
