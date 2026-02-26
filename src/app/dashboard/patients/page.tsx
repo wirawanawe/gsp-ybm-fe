@@ -1,10 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle } from 'lucide-react';
+import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle, Upload, CheckCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { apiUrl, API_BASE } from '@/lib/api';
+
+const DOC_TYPES = [
+    { id: 'ktp', label: 'KTP Pasien' },
+    { id: 'kk', label: 'Kartu Keluarga (KK)' },
+    { id: 'bpjs', label: 'BPJS Kesehatan' },
+    { id: 'sktm', label: 'SKTM' },
+    { id: 'rujukan', label: 'Surat Rujukan RS' }
+] as const;
 
 type Patient = {
     id: number;
@@ -25,6 +33,11 @@ export default function PatientsPage() {
     const [berkasPatient, setBerkasPatient] = useState<Patient | null>(null);
     const [documents, setDocuments] = useState<Doc[]>([]);
     const [docsLoading, setDocsLoading] = useState(false);
+    const [uploadFiles, setUploadFiles] = useState<Record<string, File | null>>({
+        ktp: null, kk: null, bpjs: null, sktm: null, rujukan: null
+    });
+    const [uploadLoading, setUploadLoading] = useState(false);
+    const [uploadError, setUploadError] = useState('');
 
     const fetchPatients = async () => {
         setLoading(true);
@@ -53,6 +66,8 @@ export default function PatientsPage() {
 
     const openBerkas = async (p: Patient) => {
         setBerkasPatient(p);
+        setUploadFiles({ ktp: null, kk: null, bpjs: null, sktm: null, rujukan: null });
+        setUploadError('');
         setDocsLoading(true);
         setDocuments([]);
         try {
@@ -63,6 +78,42 @@ export default function PatientsPage() {
             setDocuments([]);
         } finally {
             setDocsLoading(false);
+        }
+    };
+
+    const hasDocType = (docType: { id: string; label: string }) =>
+        documents.some(d => 
+            d.document_type === docType.label || 
+            d.document_type?.toLowerCase().includes(docType.id)
+        );
+
+    const handleUploadBerkas = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!berkasPatient) return;
+        const toSend = Object.entries(uploadFiles).filter(([, f]) => f) as [string, File][];
+        if (toSend.length === 0) {
+            setUploadError('Pilih minimal satu file untuk diunggah.');
+            return;
+        }
+        setUploadLoading(true);
+        setUploadError('');
+        try {
+            const fd = new FormData();
+            toSend.forEach(([key, file]) => fd.append(key, file));
+            const res = await fetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`), {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error((data as { message?: string }).message || 'Gagal mengunggah berkas');
+            setUploadFiles({ ktp: null, kk: null, bpjs: null, sktm: null, rujukan: null });
+            const docsRes = await fetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`));
+            const list = await docsRes.json();
+            setDocuments(Array.isArray(list) ? list : []);
+        } catch (err: any) {
+            setUploadError(err.message || 'Gagal mengunggah berkas');
+        } finally {
+            setUploadLoading(false);
         }
     };
 
@@ -201,24 +252,92 @@ export default function PatientsPage() {
                                 <div className="flex justify-center py-8">
                                     <Loader2 className="animate-spin text-emerald-500" size={28} />
                                 </div>
-                            ) : documents.length === 0 ? (
-                                <p className="text-slate-500 text-center py-6">Belum ada berkas untuk pasien ini.</p>
                             ) : (
-                                <div className="space-y-3">
-                                    {documents.map(doc => (
-                                        <div key={doc.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50">
-                                            <span className="font-medium text-slate-700 text-sm">{doc.document_type}</span>
-                                            <a
-                                                href={`${API_BASE}/${doc.file_path}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-emerald-600 text-xs font-medium hover:underline flex items-center gap-1"
-                                            >
-                                                Lihat <Eye size={14} />
-                                            </a>
-                                        </div>
-                                    ))}
-                                </div>
+                                <>
+                                    <div className="space-y-3">
+                                        {documents.length === 0 ? (
+                                            <p className="text-slate-500 text-center py-4 text-sm">Belum ada berkas untuk pasien ini. Gunakan form di bawah untuk melampirkan.</p>
+                                        ) : (
+                                            documents.map(doc => (
+                                                <div key={doc.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50">
+                                                    <span className="font-medium text-slate-700 text-sm">{doc.document_type}</span>
+                                                    <a
+                                                        href={doc.file_path.startsWith('http') ? doc.file_path : `${API_BASE}/${doc.file_path}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-emerald-600 text-xs font-medium hover:underline flex items-center gap-1"
+                                                    >
+                                                        Lihat <Eye size={14} />
+                                                    </a>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    {/* Edit / Lampirkan Berkas */}
+                                    <div className="mt-6 pt-4 border-t border-slate-200">
+                                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
+                                            <Upload size={16} className="text-emerald-600" />
+                                            Edit Berkas — Lampirkan atau Ganti File
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mb-3">
+                                            Pilih file untuk jenis berkas yang belum terlampir atau untuk mengganti file yang ada. Format: JPG, PNG, atau PDF. Maks. 5MB.
+                                        </p>
+                                        {uploadError && (
+                                            <div className="mb-3 p-2 rounded-md bg-rose-50 text-rose-700 text-xs border border-rose-200">
+                                                {uploadError}
+                                            </div>
+                                        )}
+                                        <form onSubmit={handleUploadBerkas} className="space-y-3">
+                                            {DOC_TYPES.map(docType => (
+                                                <div key={docType.id} className="flex flex-wrap items-center gap-2">
+                                                    <Input
+                                                        type="file"
+                                                        accept=".jpg,.jpeg,.png,.pdf"
+                                                        className="hidden"
+                                                        id={`doc-${docType.id}-${berkasPatient.id}`}
+                                                        onChange={e => {
+                                                            const f = e.target.files?.[0];
+                                                            setUploadFiles(prev => ({ ...prev, [docType.id]: f || null }));
+                                                            setUploadError('');
+                                                        }}
+                                                    />
+                                                    <label
+                                                        htmlFor={`doc-${docType.id}-${berkasPatient.id}`}
+                                                        className="cursor-pointer text-xs px-3 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium inline-flex items-center gap-2"
+                                                    >
+                                                        {uploadFiles[docType.id]?.name || docType.label}
+                                                    </label>
+                                                    {hasDocType(docType) && (
+                                                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                            <CheckCircle2 size={12} /> Terlampir
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <div className="pt-2 flex justify-end">
+                                                <Button
+                                                    type="submit"
+                                                    size="sm"
+                                                    disabled={uploadLoading || !Object.values(uploadFiles).some(Boolean)}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                                                >
+                                                    {uploadLoading ? (
+                                                        <>
+                                                            <Loader2 size={14} className="animate-spin mr-2" />
+                                                            Mengunggah...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Upload size={14} className="mr-2" />
+                                                            Simpan Berkas
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>

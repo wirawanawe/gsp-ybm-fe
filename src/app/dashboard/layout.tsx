@@ -117,7 +117,7 @@ const sidebarLinks: SidebarLink[] = [
         name: 'Manajemen Kamar',
         href: '/dashboard/rooms',
         icon: BedDouble,
-        roles: ['Sistem Pengelola', 'Admin YBM'],
+        roles: ['Petugas Front Desk','Sistem Pengelola', 'Admin YBM'],
     },
     {
         name: 'Logistik Ambulans',
