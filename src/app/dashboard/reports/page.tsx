@@ -45,7 +45,8 @@ export default function ReportsPage() {
         deceasedPatients: 0,
         referredPatients: 0
     });
-    const [reportDate, setReportDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -72,9 +73,21 @@ export default function ReportsPage() {
         setLoading(true);
         setError('');
         try {
+            if (startDate && endDate && startDate > endDate) {
+                setError('Tanggal awal tidak boleh lebih besar dari tanggal akhir');
+                setPatientInOut([]);
+                setAmbulanceUsage([]);
+                setLoading(false);
+                return;
+            }
+
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+
             const [inOutRes, ambRes] = await Promise.all([
-                fetch(apiUrl(`/api/reports/patient-in-out?date=${reportDate}`)),
-                fetch(apiUrl(`/api/reports/ambulance-usage?date=${reportDate}`))
+                fetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
+                fetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`))
             ]);
             const inOutData = await inOutRes.json();
             const ambData = await ambRes.json();
@@ -93,7 +106,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         fetchReports();
-    }, [reportDate]);
+    }, [startDate, endDate]);
 
     const formatDateTime = (dt: string | null) => {
         if (!dt) return '-';
@@ -101,6 +114,39 @@ export default function ReportsPage() {
             day: 'numeric', month: 'short', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
+    };
+
+    const buildDateQuery = () => {
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        return params.toString();
+    };
+
+    const downloadReport = async (path: string, filenamePrefix: string) => {
+        try {
+            const qs = buildDateQuery();
+            const url = apiUrl(`/api/reports/${path}?${qs}`);
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error('Gagal mengunduh laporan');
+            }
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            const suffix =
+                startDate === endDate
+                    ? startDate
+                    : `${startDate}_sampai_${endDate}`;
+            a.download = `${filenamePrefix}-${suffix}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Gagal mengunduh laporan');
+        }
     };
 
     return (
@@ -120,12 +166,21 @@ export default function ReportsPage() {
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
                     <div className="flex items-center gap-2 min-w-0">
                         <Calendar size={18} className="text-slate-500 shrink-0" />
-                        <Input
-                            type="date"
-                            value={reportDate}
-                            onChange={e => setReportDate(e.target.value)}
-                            className="w-full min-w-0 sm:w-40"
-                        />
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="date"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
+                                className="w-full min-w-0 sm:w-36"
+                            />
+                            <span className="text-xs text-slate-500">s.d</span>
+                            <Input
+                                type="date"
+                                value={endDate}
+                                onChange={e => setEndDate(e.target.value)}
+                                className="w-full min-w-0 sm:w-36"
+                            />
+                        </div>
                     </div>
                     <Button
                         variant="outline"
@@ -135,11 +190,7 @@ export default function ReportsPage() {
                         disabled={loading}
                     >
                         <FileSpreadsheet size={18} className="mr-2 text-emerald-600" />
-                        Refresh
-                    </Button>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 shrink-0">
-                        <Download size={18} className="mr-2" />
-                        Download
+                        Terapkan
                     </Button>
                 </div>
             </div>
@@ -186,9 +237,26 @@ export default function ReportsPage() {
 
             {/* Laporan Pasien Masuk & Keluar */}
             <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                    <LogIn size={20} className="text-emerald-600" />
-                    <h2 className="font-bold text-slate-800">Laporan Pasien Masuk & Keluar - {new Date(reportDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h2>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <LogIn size={20} className="text-emerald-600" />
+                        <h2 className="font-bold text-slate-800">
+                            Laporan Pasien Masuk & Keluar -{' '}
+                            {startDate === endDate
+                                ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                        </h2>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={patientInOut.length === 0}
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
+                        onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien')}
+                    >
+                        <Download size={16} />
+                        Download .xlsx
+                    </Button>
                 </div>
                 <div className="overflow-x-auto">
                     {loading ? (
@@ -238,9 +306,26 @@ export default function ReportsPage() {
 
             {/* Laporan Penggunaan Ambulans */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                    <Ambulance size={20} className="text-emerald-600" />
-                    <h2 className="font-bold text-slate-800">Laporan Penggunaan Ambulans - {new Date(reportDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h2>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <Ambulance size={20} className="text-emerald-600" />
+                        <h2 className="font-bold text-slate-800">
+                            Laporan Penggunaan Ambulans -{' '}
+                            {startDate === endDate
+                                ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                        </h2>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={ambulanceUsage.length === 0}
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
+                        onClick={() => downloadReport('ambulance-usage/export', 'laporan-ambulans')}
+                    >
+                        <Download size={16} />
+                        Download .xlsx
+                    </Button>
                 </div>
                 <div className="overflow-x-auto">
                     {loading ? (

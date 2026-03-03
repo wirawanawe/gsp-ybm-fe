@@ -81,7 +81,7 @@ const sidebarLinks: SidebarLink[] = [
 
     // Petugas Front Desk (RS) + Admin YBM: pendaftaran & verifikasi
     {
-        name: 'Pendaftaran Pasien',
+        name: 'Pendaftaran',
         href: '/dashboard/register',
         icon: UserPlus,
         roles: ['Petugas Front Desk', 'Admin YBM'],

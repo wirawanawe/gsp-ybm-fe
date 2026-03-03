@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2, Upload, Printer } from 'lucide-react';
+import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2, Upload, Printer, Pencil, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -23,6 +23,9 @@ export default function ScreeningPage() {
     const [docsLoading, setDocsLoading] = useState(false);
     const [susulanFiles, setSusulanFiles] = useState<{ [key: string]: File | null }>({});
     const [uploading, setUploading] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState<any>({});
+    const [savingEdit, setSavingEdit] = useState(false);
 
     const handlePrintRegistration = (patient: any) => {
         const win = window.open('', '_blank', 'width=800,height=600');
@@ -138,6 +141,24 @@ export default function ScreeningPage() {
 
     const openPatientDetails = async (patient: any) => {
         setSelectedPatient(patient);
+        setEditForm({
+            name: patient.name,
+            nik: patient.nik,
+            dob: patient.dob ? patient.dob.slice(0, 10) : '',
+            gender: patient.gender,
+            address: patient.address,
+            phone: patient.phone,
+            rt_rw: patient.rt_rw || '',
+            kelurahan: patient.kelurahan || '',
+            kecamatan: patient.kecamatan || '',
+            kabupaten: patient.kabupaten || '',
+            provinsi: patient.provinsi || '',
+            diagnosis: patient.diagnosis || '',
+            treatment_plan: patient.treatment_plan || '',
+            occupation: patient.occupation || '',
+            income: patient.income || ''
+        });
+        setIsEditing(false);
         setDocsLoading(true);
         try {
             const res = await fetch(apiUrl(`/api/patients/${patient.id}/documents`));
@@ -147,6 +168,30 @@ export default function ScreeningPage() {
             console.error(err);
         } finally {
             setDocsLoading(false);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedPatient) return;
+        setSavingEdit(true);
+        try {
+            const res = await fetch(apiUrl(`/api/patients/${selectedPatient.id}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSelectedPatient({ ...selectedPatient, ...editForm });
+                setIsEditing(false);
+                toast.success('Data pasien berhasil diupdate');
+            } else {
+                toast.error(data.message || 'Gagal update');
+            }
+        } catch (err) {
+            toast.error('Gagal update data');
+        } finally {
+            setSavingEdit(false);
         }
     };
 
@@ -224,32 +269,58 @@ export default function ScreeningPage() {
                         <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 
-                                {/* Biodata Sidebar */}
+                                {/* Biodata Sidebar - bisa diedit */}
                                 <div className="md:col-span-1 space-y-6">
                                     <div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Biodata Pribadi</h3>
-                                        <div className="space-y-3">
-                                            <div>
-                                                <div className="text-xs text-slate-500">Nama Lengkap</div>
-                                                <div className="font-semibold text-slate-800">{selectedPatient.name}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-slate-500">NIK</div>
-                                                <div className="font-medium text-slate-800">{selectedPatient.nik}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-slate-500">No. Registrasi</div>
-                                                <div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 inline-block rounded border border-emerald-100 mt-1">{selectedPatient.registration_number}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-slate-500">Telepon</div>
-                                                <div className="text-slate-800">{selectedPatient.phone}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-slate-500">Alamat</div>
-                                                <div className="text-sm text-slate-800 leading-relaxed">{selectedPatient.address}</div>
-                                            </div>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Biodata Pribadi</h3>
+                                            {!isEditing ? (
+                                                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="text-emerald-600 h-8 text-xs">
+                                                    <Pencil size={14} className="mr-1" /> Edit
+                                                </Button>
+                                            ) : (
+                                                <div className="flex gap-1">
+                                                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="h-8 text-xs">Batal</Button>
+                                                    <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit} className="bg-emerald-600 h-8 text-xs">
+                                                        <Save size={14} className="mr-1" /> {savingEdit ? 'Menyimpan...' : 'Simpan'}
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
+                                        {isEditing ? (
+                                            <div className="space-y-3">
+                                                <div><label className="text-xs text-slate-500">Nama</label><Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">NIK</label><Input value={editForm.nik} onChange={e => setEditForm({ ...editForm, nik: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Tanggal Lahir</label><Input type="date" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Jenis Kelamin</label><select value={editForm.gender} onChange={e => setEditForm({ ...editForm, gender: e.target.value })} className="h-9 w-full mt-0.5 rounded-md border px-2 text-sm"><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
+                                                <div><label className="text-xs text-slate-500">Telepon</label><Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Alamat</label><Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">RT/RW</label><Input value={editForm.rt_rw} onChange={e => setEditForm({ ...editForm, rt_rw: e.target.value })} className="h-9 mt-0.5" placeholder="001/002" /></div>
+                                                <div><label className="text-xs text-slate-500">Kelurahan</label><Input value={editForm.kelurahan} onChange={e => setEditForm({ ...editForm, kelurahan: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Kecamatan</label><Input value={editForm.kecamatan} onChange={e => setEditForm({ ...editForm, kecamatan: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Kabupaten</label><Input value={editForm.kabupaten} onChange={e => setEditForm({ ...editForm, kabupaten: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Provinsi</label><Input value={editForm.provinsi} onChange={e => setEditForm({ ...editForm, provinsi: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Diagnosa</label><Input value={editForm.diagnosis} onChange={e => setEditForm({ ...editForm, diagnosis: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Rencana Tindakan</label><Input value={editForm.treatment_plan} onChange={e => setEditForm({ ...editForm, treatment_plan: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Pekerjaan</label><Input value={editForm.occupation} onChange={e => setEditForm({ ...editForm, occupation: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Penghasilan</label><Input value={editForm.income} onChange={e => setEditForm({ ...editForm, income: e.target.value })} className="h-9 mt-0.5" /></div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div><div className="text-xs text-slate-500">Nama Lengkap</div><div className="font-semibold text-slate-800">{selectedPatient.name}</div></div>
+                                                <div><div className="text-xs text-slate-500">NIK</div><div className="font-medium text-slate-800">{selectedPatient.nik}</div></div>
+                                                <div><div className="text-xs text-slate-500">No. Registrasi</div><div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 inline-block rounded border border-emerald-100 mt-1">{selectedPatient.registration_number}</div></div>
+                                                <div><div className="text-xs text-slate-500">Telepon</div><div className="text-slate-800">{selectedPatient.phone}</div></div>
+                                                <div><div className="text-xs text-slate-500">Alamat</div><div className="text-sm text-slate-800 leading-relaxed">{selectedPatient.address}</div></div>
+                                                {(selectedPatient.rt_rw || selectedPatient.kelurahan || selectedPatient.kecamatan) && (
+                                                    <div><div className="text-xs text-slate-500">RT/RW, Kel, Kec</div><div className="text-sm text-slate-800">{[selectedPatient.rt_rw, selectedPatient.kelurahan, selectedPatient.kecamatan].filter(Boolean).join(', ')}</div></div>
+                                                )}
+                                                {selectedPatient.diagnosis && <div><div className="text-xs text-slate-500">Diagnosa</div><div className="text-sm text-slate-800">{selectedPatient.diagnosis}</div></div>}
+                                                {selectedPatient.treatment_plan && <div><div className="text-xs text-slate-500">Rencana Tindakan</div><div className="text-sm text-slate-800">{selectedPatient.treatment_plan}</div></div>}
+                                                {selectedPatient.occupation && <div><div className="text-xs text-slate-500">Pekerjaan</div><div className="text-sm text-slate-800">{selectedPatient.occupation}</div></div>}
+                                                {selectedPatient.income && <div><div className="text-xs text-slate-500">Penghasilan</div><div className="text-sm text-slate-800">{selectedPatient.income}</div></div>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle, Upload, CheckCircle2 } from 'lucide-react';
+import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle, Upload, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { apiUrl, API_BASE } from '@/lib/api';
@@ -21,6 +21,17 @@ type Patient = {
     phone: string;
     address: string;
     registration_number?: string;
+    dob?: string | null;
+    gender?: string | null;
+    rt_rw?: string | null;
+    kelurahan?: string | null;
+    kecamatan?: string | null;
+    kabupaten?: string | null;
+    provinsi?: string | null;
+    diagnosis?: string | null;
+    treatment_plan?: string | null;
+    occupation?: string | null;
+    income?: string | null;
 };
 
 type Doc = { id: number; document_type: string; file_path: string };
@@ -38,6 +49,43 @@ export default function PatientsPage() {
     });
     const [uploadLoading, setUploadLoading] = useState(false);
     const [uploadError, setUploadError] = useState('');
+
+    const [editPatient, setEditPatient] = useState<Patient | null>(null);
+    const [editForm, setEditForm] = useState<{
+        name: string;
+        nik: string;
+        phone: string;
+        address: string;
+        dob: string;
+        gender: string;
+        rt_rw: string;
+        kelurahan: string;
+        kecamatan: string;
+        kabupaten: string;
+        provinsi: string;
+        diagnosis: string;
+        treatment_plan: string;
+        occupation: string;
+        income: string;
+    }>({
+        name: '',
+        nik: '',
+        phone: '',
+        address: '',
+        dob: '',
+        gender: 'Laki-laki',
+        rt_rw: '',
+        kelurahan: '',
+        kecamatan: '',
+        kabupaten: '',
+        provinsi: '',
+        diagnosis: '',
+        treatment_plan: '',
+        occupation: '',
+        income: ''
+    });
+    const [editLoading, setEditLoading] = useState(false);
+    const [editError, setEditError] = useState('');
 
     const fetchPatients = async () => {
         setLoading(true);
@@ -127,6 +175,75 @@ export default function PatientsPage() {
         );
     });
 
+    const openEdit = (p: Patient) => {
+        setEditPatient(p);
+        setEditForm({
+            name: p.name,
+            nik: p.nik,
+            phone: p.phone,
+            address: p.address,
+            dob: p.dob ? p.dob.slice(0, 10) : '',
+            gender: p.gender || 'Laki-laki',
+            rt_rw: p.rt_rw || '',
+            kelurahan: p.kelurahan || '',
+            kecamatan: p.kecamatan || '',
+            kabupaten: p.kabupaten || '',
+            provinsi: p.provinsi || '',
+            diagnosis: p.diagnosis || '',
+            treatment_plan: p.treatment_plan || '',
+            occupation: p.occupation || '',
+            income: p.income || ''
+        });
+        setEditError('');
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editPatient) return;
+        setEditLoading(true);
+        setEditError('');
+        try {
+            const res = await fetch(apiUrl(`/api/patients/${editPatient.id}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm)
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error((data as { message?: string }).message || 'Gagal mengupdate pasien');
+            }
+            setPatients(prev =>
+                prev.map(p => (p.id === editPatient.id ? { ...p, ...editForm } : p))
+            );
+            setEditPatient(null);
+        } catch (err: any) {
+            setEditError(err.message || 'Gagal mengupdate pasien');
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    const handleDelete = async (p: Patient) => {
+        if (!window.confirm(`Yakin ingin menghapus pasien "${p.name}"? Data terkait (berkas, penunggu, riwayat inap) juga akan terhapus.`)) {
+            return;
+        }
+        try {
+            const res = await fetch(apiUrl(`/api/patients/${p.id}`), {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error((data as { message?: string }).message || 'Gagal menghapus pasien');
+            }
+            setPatients(prev => prev.filter(pt => pt.id !== p.id));
+            if (berkasPatient?.id === p.id) {
+                setBerkasPatient(null);
+            }
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Gagal menghapus pasien');
+        }
+    };
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)] h-[calc(100vh-8rem)]">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 shrink-0">
@@ -200,7 +317,7 @@ export default function PatientsPage() {
                                     <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">NIK</th>
                                     <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">Telp</th>
                                     <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">Alamat</th>
-                                    <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs w-28 shrink-0">Aksi</th>
+                                    <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs w-40 shrink-0">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -219,15 +336,35 @@ export default function PatientsPage() {
                                             {p.address}
                                         </td>
                                         <td className="px-4 py-3 align-top">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-8 text-xs gap-1"
-                                                onClick={() => openBerkas(p)}
-                                            >
-                                                <FileText size={14} />
-                                                Lihat Berkas
-                                            </Button>
+                                            <div className="flex flex-col sm:flex-row gap-1">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-xs gap-1"
+                                                    onClick={() => openBerkas(p)}
+                                                >
+                                                    <FileText size={14} />
+                                                    Berkas
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-xs gap-1"
+                                                    onClick={() => openEdit(p)}
+                                                >
+                                                    <Pencil size={14} />
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-xs gap-1 text-rose-700 border-rose-200 hover:bg-rose-50"
+                                                    onClick={() => handleDelete(p)}
+                                                >
+                                                    <Trash2 size={14} />
+                                                    Hapus
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -340,6 +477,188 @@ export default function PatientsPage() {
                                 </>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Edit Pasien */}
+            {editPatient && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setEditPatient(null)}>
+                    <div
+                        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] sm:max-h-none shadow-xl overflow-hidden flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-base sm:text-lg font-bold text-slate-800 truncate pr-2">
+                                Edit Pasien — {editPatient.name}
+                            </h2>
+                            <button onClick={() => setEditPatient(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                                <XCircle size={22} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditSubmit} className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-3">
+                            {editError && (
+                                <div className="mb-2 p-2 rounded-md bg-rose-50 text-rose-700 text-xs border border-rose-200">
+                                    {editError}
+                                </div>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Nama</label>
+                                    <Input
+                                        value={editForm.name}
+                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                        className="h-9"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">NIK</label>
+                                    <Input
+                                        value={editForm.nik}
+                                        onChange={e => setEditForm({ ...editForm, nik: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Tanggal Lahir</label>
+                                    <Input
+                                        type="date"
+                                        value={editForm.dob}
+                                        onChange={e => setEditForm({ ...editForm, dob: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Jenis Kelamin</label>
+                                    <select
+                                        value={editForm.gender}
+                                        onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
+                                        className="h-9 w-full rounded-md border border-slate-200 px-2 text-sm"
+                                    >
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Telepon</label>
+                                    <Input
+                                        value={editForm.phone}
+                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">RT/RW</label>
+                                    <Input
+                                        value={editForm.rt_rw}
+                                        onChange={e => setEditForm({ ...editForm, rt_rw: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kelurahan</label>
+                                    <Input
+                                        value={editForm.kelurahan}
+                                        onChange={e => setEditForm({ ...editForm, kelurahan: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kecamatan</label>
+                                    <Input
+                                        value={editForm.kecamatan}
+                                        onChange={e => setEditForm({ ...editForm, kecamatan: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kabupaten/Kota</label>
+                                    <Input
+                                        value={editForm.kabupaten}
+                                        onChange={e => setEditForm({ ...editForm, kabupaten: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Provinsi</label>
+                                    <Input
+                                        value={editForm.provinsi}
+                                        onChange={e => setEditForm({ ...editForm, provinsi: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-xs text-slate-500">Alamat</label>
+                                    <Input
+                                        value={editForm.address}
+                                        onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-xs text-slate-500">Diagnosa</label>
+                                    <Input
+                                        value={editForm.diagnosis}
+                                        onChange={e => setEditForm({ ...editForm, diagnosis: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-xs text-slate-500">Rencana Tindakan</label>
+                                    <Input
+                                        value={editForm.treatment_plan}
+                                        onChange={e => setEditForm({ ...editForm, treatment_plan: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Pekerjaan</label>
+                                    <Input
+                                        value={editForm.occupation}
+                                        onChange={e => setEditForm({ ...editForm, occupation: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Penghasilan</label>
+                                    <Input
+                                        value={editForm.income}
+                                        onChange={e => setEditForm({ ...editForm, income: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                            </div>
+                            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100 mt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    onClick={() => setEditPatient(null)}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    disabled={editLoading}
+                                >
+                                    {editLoading ? (
+                                        <>
+                                            <Loader2 size={14} className="animate-spin mr-1" />
+                                            Menyimpan...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={14} className="mr-1" />
+                                            Simpan
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

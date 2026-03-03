@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Loader2, ClipboardList, AlertCircle, FileCheck } from 'lucide-react';
+import { Search, Loader2, ClipboardList, AlertCircle, FileCheck, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { apiUrl } from '@/lib/api';
@@ -59,6 +59,28 @@ export default function PendaftarPage() {
             p.registration_number.toLowerCase().includes(q)
         );
     });
+
+    const handleCancel = async (p: Applicant) => {
+        if (p.status_rumah_singgah !== 'Menunggu') return;
+        const ok = window.confirm(
+            `Batalkan pendaftar dengan nomor registrasi ${p.registration_number} atas nama ${p.name}?`
+        );
+        if (!ok) return;
+        try {
+            const res = await fetch(apiUrl(`/api/patients/${p.id}/verify`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status_verification: 'Rujukan Lain' })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error((data as { message?: string }).message || 'Gagal membatalkan pendaftar');
+            }
+            await fetchApplicants();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Gagal membatalkan pendaftar');
+        }
+    };
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)] h-[calc(100vh-8rem)]">
@@ -137,6 +159,7 @@ export default function PendaftarPage() {
                                     <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">Tgl Daftar</th>
                                     <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">Status Rumah Singgah</th>
                                     <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">Tanggal Checkout</th>
+                                    <th className="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-xs text-right whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -180,6 +203,21 @@ export default function PendaftarPage() {
                                                       year: 'numeric'
                                                   })
                                                 : '–'}
+                                        </td>
+                                        <td className="px-3 sm:px-4 py-3 align-top text-right">
+                                            {p.status_rumah_singgah === 'Menunggu' ? (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-[11px] gap-1 text-rose-700 border-rose-200 hover:bg-rose-50"
+                                                    onClick={() => handleCancel(p)}
+                                                >
+                                                    <XCircle size={12} />
+                                                    Batal
+                                                </Button>
+                                            ) : (
+                                                <span className="text-[11px] text-slate-400">-</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

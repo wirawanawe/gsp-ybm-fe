@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BedDouble, CheckCircle, Info, UserPlus, XCircle, HelpCircle } from 'lucide-react';
+import { BedDouble, CheckCircle, Info, UserPlus, XCircle, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiUrl } from '@/lib/api';
 
@@ -10,13 +10,19 @@ export default function RoomsPage() {
     const [loading, setLoading] = useState(true);
     const [selectedBed, setSelectedBed] = useState<any>(null);
     const [formData, setFormData] = useState({
-        patient_id: '', companion_name: '', companion_nik: ''
+        patient_id: '',
+        visitor_id: '',
+        companion_name: '',
+        companion_nik: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [patients, setPatients] = useState<any[]>([]);
     const [activeVisitor, setActiveVisitor] = useState<any | null>(null);
     const [checkoutBed, setCheckoutBed] = useState<any | null>(null);
     const [checkoutFinalStatus, setCheckoutFinalStatus] = useState<string>('Sembuh');
+    const [transferBed, setTransferBed] = useState<any | null>(null);
+    const [transferTargetBedId, setTransferTargetBedId] = useState<string>('');
+    const [transferReason, setTransferReason] = useState<string>('');
 
     const fetchRooms = async () => {
         try {
@@ -52,30 +58,37 @@ export default function RoomsPage() {
         }
     };
 
+    const [visitorsForPatient, setVisitorsForPatient] = useState<any[]>([]);
+
     const fetchVisitorForPatient = async (patientId: string) => {
         if (!patientId) {
             setActiveVisitor(null);
-            setFormData(prev => ({ ...prev, companion_name: '', companion_nik: '' }));
+            setVisitorsForPatient([]);
+            setFormData(prev => ({ ...prev, visitor_id: '', companion_name: '', companion_nik: '' }));
             return;
         }
         try {
             const res = await fetch(apiUrl(`/api/visitors?patient_id=${patientId}`));
             const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-                const active = data.find((v: any) => v.is_active) || data[0];
+            const list = Array.isArray(data) ? data : [];
+            setVisitorsForPatient(list);
+            if (list.length > 0) {
+                const active = list.find((v: any) => v.is_active) || list[0];
                 setActiveVisitor(active);
                 setFormData(prev => ({
                     ...prev,
+                    visitor_id: String(active.id),
                     companion_name: active.name || '',
                     companion_nik: active.nik || ''
                 }));
             } else {
                 setActiveVisitor(null);
-                setFormData(prev => ({ ...prev, companion_name: '', companion_nik: '' }));
+                setFormData(prev => ({ ...prev, visitor_id: '', companion_name: '', companion_nik: '' }));
             }
         } catch (err) {
             console.error('fetchVisitorForPatient error:', err);
             setActiveVisitor(null);
+            setVisitorsForPatient([]);
         }
     };
 
@@ -86,8 +99,9 @@ export default function RoomsPage() {
 
     // Reset form & data penunggu saat modal dibuka/ditutup
     useEffect(() => {
-        setFormData({ patient_id: '', companion_name: '', companion_nik: '' });
+        setFormData({ patient_id: '', visitor_id: '', companion_name: '', companion_nik: '' });
         setActiveVisitor(null);
+        setVisitorsForPatient([]);
     }, [selectedBed]);
 
     const handleCheckIn = async (e: React.FormEvent) => {
@@ -102,6 +116,7 @@ export default function RoomsPage() {
                 body: JSON.stringify({
                     bed_id: selectedBed.id,
                     patient_id: formData.patient_id,
+                    visitor_id: formData.visitor_id || null,
                     companion_name: formData.companion_name,
                     companion_nik: formData.companion_nik
                 })
@@ -119,6 +134,35 @@ export default function RoomsPage() {
             alert('Kesalahan jaringan');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleTransfer = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!transferBed || !transferTargetBedId) return;
+        try {
+            const res = await fetch(apiUrl('/api/rooms/transfer'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from_bed_id: transferBed.id,
+                    to_bed_id: transferTargetBedId,
+                    reason: transferReason
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Pindah kamar berhasil!');
+                setTransferBed(null);
+                setTransferTargetBedId('');
+                setTransferReason('');
+                window.location.reload();
+            } else {
+                alert(`Gagal: ${data.message}`);
+            }
+        } catch (err) {
+            console.error('Transfer err:', err);
+            alert('Kesalahan jaringan');
         }
     };
 
@@ -158,6 +202,64 @@ export default function RoomsPage() {
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 relative min-h-[calc(100vh-8rem)]">
+
+            {/* Modal Pindah Kamar */}
+            {transferBed && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] sm:max-h-none shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 overflow-y-auto">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate pr-2 flex items-center gap-2">
+                                <ArrowRightLeft className="text-emerald-600" />
+                                Pindah Kamar
+                            </h2>
+                            <button onClick={() => { setTransferBed(null); setTransferTargetBedId(''); setTransferReason(''); }} className="text-slate-400 hover:text-slate-700 shrink-0 p-1">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleTransfer} className="p-4 sm:p-6 space-y-4">
+                            <p className="text-sm text-slate-600">
+                                Pasien: <strong>{transferBed.patient_name}</strong> (Bed {transferBed.bed_number})
+                            </p>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Kamar tujuan</label>
+                                <select
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    value={transferTargetBedId}
+                                    onChange={e => setTransferTargetBedId(e.target.value)}
+                                    required
+                                >
+                                    <option value="">-- Pilih Bed Tujuan --</option>
+                                    {rooms.flatMap((r: any) => (r.beds || [])
+                                        .filter((b: any) => b.is_available && b.id !== transferBed.id)
+                                        .map((b: any) => (
+                                            <option key={b.id} value={b.id}>
+                                                Kamar {r.room_number} - Bed {b.bed_number}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Alasan pindah</label>
+                                <textarea
+                                    className="w-full min-h-[80px] px-3 py-2 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={transferReason}
+                                    onChange={e => setTransferReason(e.target.value)}
+                                    placeholder="Masukkan alasan pindah kamar..."
+                                />
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                                <Button type="button" variant="outline" onClick={() => setTransferBed(null)}>
+                                    Batal
+                                </Button>
+                                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                                    Proses Pindah
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Check-Out / Pulang - Responsive */}
             {checkoutBed && (
@@ -215,13 +317,13 @@ export default function RoomsPage() {
 
                         <form onSubmit={handleCheckIn} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Pilih Pasien Terverifikasi</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Pilih Pasien</label>
                                 <select
                                     className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                                     value={formData.patient_id}
                                     onChange={(e) => {
                                         const value = e.target.value;
-                                        setFormData({ ...formData, patient_id: value });
+                                        setFormData({ ...formData, patient_id: value, visitor_id: '' });
                                         fetchVisitorForPatient(value);
                                     }}
                                     required
@@ -238,7 +340,33 @@ export default function RoomsPage() {
                                 )}
                             </div>
 
-                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mt-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Pilih Penunggu</label>
+                                <select
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    value={formData.visitor_id}
+                                    onChange={(e) => {
+                                        const vid = e.target.value;
+                                        const v = visitorsForPatient.find((x: any) => String(x.id) === vid);
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            visitor_id: vid,
+                                            companion_name: v?.name || '',
+                                            companion_nik: v?.nik || ''
+                                        }));
+                                        setActiveVisitor(v || null);
+                                    }}
+                                >
+                                    <option value="">-- Tidak ada penunggu --</option>
+                                    {visitorsForPatient.map(v => (
+                                        <option key={v.id} value={v.id}>
+                                            {v.name} ({v.relation}){v.is_active ? ' - Aktif' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                                 <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-3">
                                     <Info size={16} /> Data Penunggu
                                 </h3>
@@ -247,14 +375,13 @@ export default function RoomsPage() {
                                         <p><span className="font-medium">Nama:</span> {activeVisitor.name}</p>
                                         <p><span className="font-medium">NIK:</span> {activeVisitor.nik}</p>
                                         <p><span className="font-medium">Relasi:</span> {activeVisitor.relation}</p>
-                                        <p className="mt-2 text-xs text-slate-500">
-                                            Data ini diambil otomatis dari <strong>Registrasi Penunggu</strong>.
-                                            Jika penunggu perlu diubah, silakan ubah di menu Data Penunggu terlebih dahulu.
-                                        </p>
+                                        {activeVisitor.phone && <p><span className="font-medium">No HP:</span> {activeVisitor.phone}</p>}
                                     </div>
                                 ) : (
                                     <p className="text-xs text-slate-600">
-                                        Belum ada penunggu yang terdaftar untuk pasien ini. Tambahkan penunggu di menu <strong>Data Penunggu</strong> bila diperlukan.
+                                        {formData.patient_id
+                                            ? 'Belum ada penunggu terpilih. Pilih penunggu di atas atau daftarkan di menu Data Penunggu.'
+                                            : 'Pilih pasien terlebih dahulu untuk melihat daftar penunggu.'}
                                     </p>
                                 )}
                             </div>
@@ -270,96 +397,136 @@ export default function RoomsPage() {
                 </div>
             )}
 
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-6">
                 <div className="min-w-0">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Manajemen Kamar & Denah</h1>
                     <p className="text-slate-600 text-sm mt-1">Visualisasi ketersediaan Bed dan proses Check-in Pasien.</p>
                 </div>
-                <div className="flex flex-wrap gap-3 sm:gap-4 text-sm font-medium shrink-0">
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-emerald-500"></div> Tersedia</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-rose-500"></div> Terisi</div>
+                <div className="flex flex-wrap gap-4 text-sm font-medium shrink-0">
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                        <div className="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-emerald-200"></div>
+                        <span className="text-emerald-700">Tersedia</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-100">
+                        <div className="w-3 h-3 rounded-full bg-rose-500 ring-2 ring-rose-200"></div>
+                        <span className="text-rose-700">Terisi</span>
+                    </div>
                 </div>
             </div>
 
-            <div className="space-y-6 sm:space-y-8">
+            <div className="space-y-6">
                 {rooms.map((room) => {
                     const beds = Array.isArray(room.beds) ? room.beds : [];
+                    const availableCount = beds.filter((b: any) => b.is_available).length;
+                    const occupiedCount = beds.length - availableCount;
                     return (
-                    <div key={room.id} className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex flex-col xs:flex-row justify-between items-start xs:items-center gap-1 sm:gap-2">
-                            <h2 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <BedDouble size={20} className="text-slate-500 shrink-0" />
-                                Kamar {room.room_number}
-                            </h2>
-                            <span className="text-sm text-slate-500 font-medium">
-                                {beds.filter((b: any) => b.is_available).length} Bed Kosong
-                            </span>
+                    <div key={room.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div className="bg-gradient-to-r from-slate-50 to-slate-100/80 px-5 sm:px-6 py-4 border-b border-slate-200">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-3">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm">
+                                        <BedDouble size={20} className="text-slate-600" />
+                                    </div>
+                                    Kamar {room.room_number}
+                                </h2>
+                                <div className="flex gap-3 text-sm">
+                                    <span className="inline-flex items-center px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 font-medium">
+                                        {availableCount} Kosong
+                                    </span>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-lg bg-slate-200 text-slate-600 font-medium">
+                                        {occupiedCount} Terisi
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {beds.length === 0 ? (
-                                <p className="col-span-full text-sm text-slate-500 py-4">
+                                <p className="col-span-full text-sm text-slate-500 py-8 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
                                     Belum ada bed di kamar ini. Tambah kamar baru dari Setting (dengan kapasitas bed) agar bed dan tombol Check-in muncul.
                                 </p>
                             ) : null}
                             {beds.map((bed: any) => (
                                 <div
                                     key={bed.id}
-                                    className={`relative p-5 rounded-xl border-2 transition-all ${bed.is_available
-                                        ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-400'
-                                        : 'border-rose-200 bg-rose-50'
-                                        }`}
+                                    className={`relative rounded-2xl border-2 transition-all duration-200 overflow-hidden ${
+                                        bed.is_available
+                                            ? 'border-emerald-200 bg-gradient-to-b from-emerald-50 to-white hover:border-emerald-400 hover:shadow-md'
+                                            : 'border-rose-100 bg-gradient-to-b from-rose-50/80 to-white'
+                                    }`}
                                 >
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="font-bold text-xl text-slate-800">{bed.bed_number}</div>
-                                        <div className={`p-1.5 rounded-full ${bed.is_available ? 'bg-emerald-200 text-emerald-700' : 'bg-rose-200 text-rose-700'}`}>
-                                            {bed.is_available ? <CheckCircle size={16} /> : <Info size={16} />}
-                                        </div>
+                                    <div className="absolute top-3 right-3">
+                                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
+                                            bed.is_available ? 'bg-emerald-500/20 text-emerald-600' : 'bg-rose-500/20 text-rose-600'
+                                        }`}>
+                                            {bed.is_available ? <CheckCircle size={18} /> : <Info size={18} />}
+                                        </span>
                                     </div>
+                                    <div className="p-5 pt-4">
+                                        <div className="text-3xl font-extrabold text-slate-800 mb-1">Bed {bed.bed_number}</div>
+                                        <div className={`text-sm font-semibold mb-4 ${bed.is_available ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {bed.is_available ? 'Tersedia' : 'Terisi'}
+                                        </div>
 
-                                    {bed.is_available ? (
-                                        <div>
-                                            <div className="text-emerald-700 font-medium text-sm mb-4">Bed Tersedia</div>
+                                        {bed.is_available ? (
                                             <Button
-                                                className="w-full bg-slate-800 hover:bg-slate-900 text-white"
+                                                className="w-full h-11 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-xl shadow-sm"
                                                 size="sm"
                                                 onClick={() => setSelectedBed(bed)}
                                             >
+                                                <UserPlus size={18} className="mr-2" />
                                                 Check-in Pasien
                                             </Button>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <div className="text-rose-700 font-medium text-sm mb-1">Terisi oleh:</div>
-                                            <div className="text-slate-800 font-semibold truncate mb-1" title={bed.patient_name}>
-                                                {bed.patient_name || 'Pasien Aktif'}
-                                            </div>
-                                            {bed.patient_registration_number && (
-                                                <div className="text-[11px] text-slate-500 mb-1">
-                                                    Reg: {bed.patient_registration_number}
+                                        ) : (
+                                            <>
+                                                <div className="space-y-2 mb-4">
+                                                    <div className="font-semibold text-slate-800 truncate" title={bed.patient_name}>
+                                                        {bed.patient_name || 'Pasien Aktif'}
+                                                    </div>
+                                                    {bed.patient_registration_number && (
+                                                        <div className="text-xs text-slate-500 font-mono">
+                                                            {bed.patient_registration_number}
+                                                        </div>
+                                                    )}
+                                                    {bed.check_in_date && (
+                                                        <div className="text-xs text-slate-500">
+                                                            Masuk: {new Date(bed.check_in_date).toLocaleString('id-ID', {
+                                                                day: 'numeric', month: 'short', year: 'numeric',
+                                                                hour: '2-digit', minute: '2-digit'
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {bed.check_in_date && (
-                                                <div className="text-[11px] text-slate-500 mb-3">
-                                                    Masuk: {new Date(bed.check_in_date).toLocaleString('id-ID', {
-                                                        day: 'numeric', month: 'short', year: 'numeric',
-                                                        hour: '2-digit', minute: '2-digit'
-                                                    })}
+                                                <div className="flex flex-col gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full h-10 border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 rounded-xl font-medium"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setTransferBed(bed);
+                                                            setTransferTargetBedId('');
+                                                            setTransferReason('');
+                                                        }}
+                                                    >
+                                                        <ArrowRightLeft size={16} className="mr-2" />
+                                                        Pindah Kamar
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full h-10 border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300 rounded-xl font-medium"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setCheckoutBed(bed);
+                                                            setTransferBed(null);
+                                                            setCheckoutFinalStatus('Sembuh');
+                                                        }}
+                                                    >
+                                                        Check Out / Pulang
+                                                    </Button>
                                                 </div>
-                                            )}
-                                            <Button
-                                                variant="outline"
-                                                className="w-full border-rose-200 text-rose-700 hover:bg-rose-100"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setCheckoutBed(bed);
-                                                    setCheckoutFinalStatus('Sembuh');
-                                                }}
-                                            >
-                                                Check Out / Pulang
-                                            </Button>
-                                        </div>
-                                    )}
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { User, FileText, CheckCircle2, HeartPulse, ChevronRight, Upload, ArrowLeft, Search, Eye } from 'lucide-react';
+import { User, FileText, CheckCircle2, HeartPulse, ChevronRight, Upload, ArrowLeft, Search, Eye, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,16 @@ export default function DashboardRegisterPatientPage() {
         gender: 'Laki-laki',
         address: '',
         phone: '',
-        status_mustahik: 'Mustahik'
+        status_mustahik: 'Mustahik',
+        rt_rw: '',
+        kelurahan: '',
+        kecamatan: '',
+        kabupaten: '',
+        provinsi: '',
+        diagnosis: '',
+        treatment_plan: '',
+        occupation: '',
+        income: ''
     });
 
     const [files, setFiles] = useState<{ [key: string]: File | null }>({
@@ -37,14 +46,70 @@ export default function DashboardRegisterPatientPage() {
     const [dataFromExisting, setDataFromExisting] = useState(false);
     const [existingPatientId, setExistingPatientId] = useState<number | null>(null);
     const [existingDocuments, setExistingDocuments] = useState<{ id: number; document_type: string; file_path: string }[]>([]);
+    const [registrationType, setRegistrationType] = useState<'pasien' | 'penunggu'>('pasien');
+    const [penungguForm, setPenungguForm] = useState({ patient_id: '', name: '', nik: '', phone: '', relation: '' });
+    const [penungguFiles, setPenungguFiles] = useState<{ ktp: File | null; kk: File | null }>({
+        ktp: null,
+        kk: null
+    });
+    const [patientsForPenunggu, setPatientsForPenunggu] = useState<{ id: number; name: string; registration_number: string }[]>([]);
+
+    const fetchPatientsForPenunggu = async () => {
+        try {
+            const res = await fetch(apiUrl('/api/patients?status=Layak Mustahik'));
+            const data = await res.json();
+            setPatientsForPenunggu(Array.isArray(data) ? data : []);
+        } catch (err) {
+            setPatientsForPenunggu([]);
+        }
+    };
+
+    useEffect(() => {
+        if (registrationType === 'penunggu') fetchPatientsForPenunggu();
+    }, [registrationType]);
 
     const nextStep = () => {
-        if (step === 1 && formData.nik.length !== 16) {
-            setErrorMsg('NIK harus tepat 16 digit sesuai KTP');
-            return;
+        if (registrationType === 'pasien') {
+            if (step === 1 && formData.nik.length !== 16) {
+                setErrorMsg('NIK harus tepat 16 digit sesuai KTP');
+                return;
+            }
+            setErrorMsg('');
+            setStep(step + 1);
+        } else {
+            if (penungguForm.nik.length !== 16 || !penungguForm.patient_id || !penungguForm.name || !penungguForm.phone || !penungguForm.relation) {
+                setErrorMsg('Lengkapi semua field: Pilih Pasien, NIK (16 digit), Nama, No HP, Hubungan dengan pasien');
+                return;
+            }
+            setErrorMsg('');
+            handlePenungguSubmit();
         }
+    };
+
+    const handlePenungguSubmit = async () => {
+        setLoading(true);
         setErrorMsg('');
-        setStep(step + 1);
+        try {
+            const fd = new FormData();
+            fd.append('patient_id', penungguForm.patient_id);
+            fd.append('name', penungguForm.name);
+            fd.append('nik', penungguForm.nik);
+            fd.append('phone', penungguForm.phone);
+            fd.append('relation', penungguForm.relation);
+            if (penungguFiles.ktp) fd.append('ktp', penungguFiles.ktp);
+            if (penungguFiles.kk) fd.append('kk', penungguFiles.kk);
+            const res = await fetch(apiUrl('/api/visitors'), { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Gagal registrasi penunggu');
+            setRegNumber(`PENUNGGU-${data.id}`);
+            setStep(3);
+            toast.success('Registrasi Penunggu Berhasil', { description: 'Penunggu berhasil didaftarkan.', duration: 4000 });
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (err: any) {
+            setErrorMsg(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
     const prevStep = () => setStep(step - 1);
 
@@ -81,13 +146,23 @@ export default function DashboardRegisterPatientPage() {
                     return;
                 }
                 setFormData({
+                    ...formData,
                     name: data.name || '',
                     nik: data.nik || formData.nik,
                     dob: data.dob ? data.dob.slice(0, 10) : '',
                     gender: data.gender || 'Laki-laki',
                     address: data.address || '',
                     phone: data.phone || '',
-                    status_mustahik: data.status_mustahik || 'Mustahik'
+                    status_mustahik: data.status_mustahik || 'Mustahik',
+                    rt_rw: data.rt_rw || '',
+                    kelurahan: data.kelurahan || '',
+                    kecamatan: data.kecamatan || '',
+                    kabupaten: data.kabupaten || '',
+                    provinsi: data.provinsi || '',
+                    diagnosis: data.diagnosis || '',
+                    treatment_plan: data.treatment_plan || '',
+                    occupation: data.occupation || '',
+                    income: data.income || ''
                 });
                 setDataFromExisting(true);
                 setExistingPatientId(data.id);
@@ -106,17 +181,19 @@ export default function DashboardRegisterPatientPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (formData.nik.length !== 16) {
-            setErrorMsg('NIK harus tepat 16 digit sesuai KTP');
-            return;
-        }
         setLoading(true);
         setErrorMsg('');
 
         try {
+            if (formData.nik.length !== 16) {
+                setErrorMsg('NIK harus tepat 16 digit sesuai KTP');
+                setLoading(false);
+                return;
+            }
+
             const formDataToSend = new FormData();
             Object.entries(formData).forEach(([key, value]) => {
-                formDataToSend.append(key, value);
+                formDataToSend.append(key, value ?? '');
             });
 
             if (files.ktp) formDataToSend.append('ktp', files.ktp);
@@ -129,7 +206,6 @@ export default function DashboardRegisterPatientPage() {
             let url: string;
 
             if (existingPatientId) {
-                // Pendaftaran ulang: gunakan data & dokumen yang sudah ada
                 url = apiUrl(`/api/patients/${existingPatientId}/re-register`);
                 res = await fetch(url, { method: 'POST', body: formDataToSend });
             } else {
@@ -164,9 +240,9 @@ export default function DashboardRegisterPatientPage() {
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white mb-2">
                         <HeartPulse size={22} />
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">Pendaftaran Pasien Baru</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">Pendaftaran Pasien/Penunggu Baru</h1>
                     <p className="text-slate-600 text-sm mt-1">
-                        Form ini digunakan oleh petugas front desk untuk mendaftarkan pasien ke sistem GSP.
+                        Form ini digunakan oleh petugas front desk untuk mendaftarkan pasien/penunggu ke sistem GSP.
                     </p>
                 </div>
                 <Button
@@ -270,8 +346,28 @@ export default function DashboardRegisterPatientPage() {
                         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
                             <User className="text-emerald-600" />
                             <h2 className="text-lg font-semibold text-slate-800">
-                                Informasi Pribadi Pasien
+                                {registrationType === 'pasien' ? 'Informasi Pribadi Pasien' : 'Informasi Penunggu'}
                             </h2>
+                        </div>
+
+                        {/* Toggle Pasien / Penunggu */}
+                        <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-fit">
+                            <button
+                                type="button"
+                                onClick={() => { setRegistrationType('pasien'); setErrorMsg(''); }}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${registrationType === 'pasien' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                            >
+                                <User className="inline mr-2 size-4" />
+                                Pasien
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setRegistrationType('penunggu'); setErrorMsg(''); }}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${registrationType === 'penunggu' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                            >
+                                <UserCircle className="inline mr-2 size-4" />
+                                Penunggu
+                            </button>
                         </div>
 
                         {errorMsg && (
@@ -280,13 +376,101 @@ export default function DashboardRegisterPatientPage() {
                             </div>
                         )}
 
-                        {dataFromExisting && (
-                            <div className="p-3 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-xs rounded-r-md flex items-center gap-2">
-                                <CheckCircle2 size={16} />
-                                Data pasien ditemukan dari pendaftaran sebelumnya. Silakan periksa dan lanjutkan.
-                            </div>
+                        {registrationType === 'pasien' && (
+                            <>
+                                {dataFromExisting && (
+                                    <div className="p-3 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-xs rounded-r-md flex items-center gap-2">
+                                        <CheckCircle2 size={16} />
+                                        Data pasien ditemukan dari pendaftaran sebelumnya. Silakan periksa dan lanjutkan.
+                                    </div>
+                                )}
+                                <p className="text-xs text-slate-500">
+                                    Data dapat diedit saat verifikasi di screening jika belum valid.
+                                </p>
+                            </>
                         )}
 
+                        {registrationType === 'penunggu' ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                <div className="sm:col-span-2">
+                                    <Label>Pilih Pasien</Label>
+                                    <select
+                                        className="w-full h-10 mt-1 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                        value={penungguForm.patient_id}
+                                        onChange={e => setPenungguForm(p => ({ ...p, patient_id: e.target.value }))}
+                                        required
+                                    >
+                                        <option value="">-- Pilih Pasien Terverifikasi --</option>
+                                        {patientsForPenunggu.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name} (Reg: {p.registration_number})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>NIK Penunggu (16 digit)</Label>
+                                    <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={16}
+                                        value={penungguForm.nik}
+                                        onChange={e => setPenungguForm(p => ({ ...p, nik: e.target.value.replace(/\D/g, '') }))}
+                                        placeholder="16 digit NIK"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Nama Penunggu</Label>
+                                    <Input
+                                        value={penungguForm.name}
+                                        onChange={e => setPenungguForm(p => ({ ...p, name: e.target.value }))}
+                                        placeholder="Nama lengkap"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>No. HP</Label>
+                                    <Input
+                                        value={penungguForm.phone}
+                                        onChange={e => setPenungguForm(p => ({ ...p, phone: e.target.value }))}
+                                        placeholder="08xxxxxxxxxx"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Hubungan dengan Pasien</Label>
+                                    <Input
+                                        value={penungguForm.relation}
+                                        onChange={e => setPenungguForm(p => ({ ...p, relation: e.target.value }))}
+                                        placeholder="Istri / Anak / Saudara"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Upload KTP Penunggu</Label>
+                                    <Input
+                                        type="file"
+                                        accept=".jpg,.jpeg,.png,.pdf"
+                                        onChange={e => {
+                                            const f = e.target.files?.[0] || null;
+                                            setPenungguFiles(prev => ({ ...prev, ktp: f }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Upload KK Penunggu</Label>
+                                    <Input
+                                        type="file"
+                                        accept=".jpg,.jpeg,.png,.pdf"
+                                        onChange={e => {
+                                            const f = e.target.files?.[0] || null;
+                                            setPenungguFiles(prev => ({ ...prev, kk: f }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="nik">NIK (16 digit) - Input terlebih dahulu untuk cari data</Label>
@@ -356,6 +540,37 @@ export default function DashboardRegisterPatientPage() {
                                 />
                             </div>
                             <div className="space-y-2">
+                                <Label htmlFor="gender">Jenis Kelamin</Label>
+                                <select
+                                    id="gender"
+                                    name="gender"
+                                    value={formData.gender}
+                                    onChange={handleInputChange}
+                                    className="flex h-10 w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                                >
+                                    <option value="Laki-laki">Laki-laki</option>
+                                    <option value="Perempuan">Perempuan</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="age">Usia</Label>
+                                <Input
+                                    id="age"
+                                    type="text"
+                                    readOnly
+                                    value={formData.dob ? (() => {
+                                        const today = new Date();
+                                        const birth = new Date(formData.dob);
+                                        let age = today.getFullYear() - birth.getFullYear();
+                                        const m = today.getMonth() - birth.getMonth();
+                                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                                        return age >= 0 ? `${age} tahun` : '-';
+                                    })() : '-'}
+                                    className="bg-slate-50 text-slate-600"
+                                />
+                                <p className="text-xs text-slate-500">Otomatis dari Tanggal Lahir</p>
+                            </div>
+                            <div className="space-y-2">
                                 <Label htmlFor="phone">No. Telepon / WhatsApp</Label>
                                 <Input
                                     id="phone"
@@ -373,21 +588,114 @@ export default function DashboardRegisterPatientPage() {
                                     name="address"
                                     value={formData.address}
                                     onChange={handleInputChange}
-                                    rows={3}
+                                    rows={2}
                                     className="flex w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-                                    placeholder="Tuliskan alamat sesuai KTP"
+                                    placeholder="Jalan, Nomor rumah, dll"
                                     required
                                 ></textarea>
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="rt_rw">RT/RW</Label>
+                                <Input
+                                    id="rt_rw"
+                                    name="rt_rw"
+                                    value={formData.rt_rw}
+                                    onChange={handleInputChange}
+                                    placeholder="001/002"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="kelurahan">Kelurahan</Label>
+                                <Input
+                                    id="kelurahan"
+                                    name="kelurahan"
+                                    value={formData.kelurahan}
+                                    onChange={handleInputChange}
+                                    placeholder="Nama kelurahan"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="kecamatan">Kecamatan</Label>
+                                <Input
+                                    id="kecamatan"
+                                    name="kecamatan"
+                                    value={formData.kecamatan}
+                                    onChange={handleInputChange}
+                                    placeholder="Nama kecamatan"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="kabupaten">Kabupaten/Kota</Label>
+                                <Input
+                                    id="kabupaten"
+                                    name="kabupaten"
+                                    value={formData.kabupaten}
+                                    onChange={handleInputChange}
+                                    placeholder="Kabupaten/Kota"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="provinsi">Provinsi</Label>
+                                <Input
+                                    id="provinsi"
+                                    name="provinsi"
+                                    value={formData.provinsi}
+                                    onChange={handleInputChange}
+                                    placeholder="Provinsi"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="diagnosis">Diagnosa Penyakit</Label>
+                                <Input
+                                    id="diagnosis"
+                                    name="diagnosis"
+                                    value={formData.diagnosis}
+                                    onChange={handleInputChange}
+                                    placeholder="Diagnosa dari dokter/rumah sakit"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="treatment_plan">Rencana Tindakan</Label>
+                                <Input
+                                    id="treatment_plan"
+                                    name="treatment_plan"
+                                    value={formData.treatment_plan}
+                                    onChange={handleInputChange}
+                                    placeholder="Rencana pengobatan/tindakan medis"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="occupation">Pekerjaan</Label>
+                                <Input
+                                    id="occupation"
+                                    name="occupation"
+                                    value={formData.occupation}
+                                    onChange={handleInputChange}
+                                    placeholder="Pekerjaan"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="income">Penghasilan</Label>
+                                <Input
+                                    id="income"
+                                    name="income"
+                                    value={formData.income}
+                                    onChange={handleInputChange}
+                                    placeholder="Estimasi penghasilan/bulan"
+                                />
+                            </div>
                         </div>
+                        )}
 
                         <div className="pt-4 flex justify-end">
                             <Button
-                                onClick={nextStep}
+                                type="button"
+                                onClick={() => nextStep()}
+                                disabled={loading}
                                 className="h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
                             >
-                                Lanjut ke Dokumen
-                                <ChevronRight size={16} className="ml-2" />
+                                {registrationType === 'penunggu' ? (loading ? 'Menyimpan...' : 'Simpan Penunggu') : 'Lanjut ke Dokumen'}
+                                {registrationType === 'pasien' && <ChevronRight size={16} className="ml-2" />}
                             </Button>
                         </div>
                     </div>
@@ -528,28 +836,38 @@ export default function DashboardRegisterPatientPage() {
                             <CheckCircle2 size={40} />
                         </div>
                         <h2 className="text-2xl font-extrabold text-slate-900 mb-3">
-                            Pendaftaran Berhasil
+                            {regNumber.startsWith('PENUNGGU') ? 'Registrasi Penunggu Berhasil' : 'Pendaftaran Berhasil'}
                         </h2>
                         <p className="text-sm text-slate-600 max-w-md mb-2">
-                            Nomor Registrasi pasien:
+                            {regNumber.startsWith('PENUNGGU') ? 'ID Penunggu:' : 'Nomor Registrasi pasien:'}
                         </p>
                         <div className="bg-slate-100 border border-slate-200 px-5 py-2 rounded-lg font-mono text-lg font-bold tracking-wider text-slate-800 my-4">
                             {regNumber}
                         </div>
-                        <p className="text-xs text-slate-500 max-w-md mb-2">
-                            Nomor ini dapat digunakan untuk proses verifikasi dan penempatan kamar selanjutnya.
-                        </p>
-                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-md mb-6">
-                            Pasien baru masuk antrian <strong>Verifikasi Pasien</strong>. Agar muncul di <strong>Data Pendaftar</strong> dan bisa check-in, verifikasi di menu Verifikasi Pasien lalu pilih <strong>Layak Mustahik</strong>.
-                        </p>
+                        {regNumber.startsWith('PENUNGGU') ? (
+                            <p className="text-xs text-slate-500 max-w-md mb-6">
+                                Penunggu berhasil didaftarkan dan dapat dipilih saat check-in pasien.
+                            </p>
+                        ) : (
+                            <>
+                                <p className="text-xs text-slate-500 max-w-md mb-2">
+                                    Nomor ini dapat digunakan untuk proses verifikasi dan penempatan kamar selanjutnya.
+                                </p>
+                                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-md mb-6">
+                                    Pasien baru masuk antrian <strong>Verifikasi Pasien</strong>. Agar muncul di <strong>Data Pendaftar</strong> dan bisa check-in, verifikasi di menu Verifikasi Pasien lalu pilih <strong>Layak Mustahik</strong>.
+                                </p>
+                            </>
+                        )}
                         <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => router.push('/dashboard/screening')}
-                            >
-                                Ke Verifikasi Pasien
-                            </Button>
+                            {!regNumber.startsWith('PENUNGGU') && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => router.push('/dashboard/screening')}
+                                >
+                                    Ke Verifikasi Pasien
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -563,7 +881,16 @@ export default function DashboardRegisterPatientPage() {
                                         gender: 'Laki-laki',
                                         address: '',
                                         phone: '',
-                                        status_mustahik: 'Mustahik'
+                                        status_mustahik: 'Mustahik',
+                                        rt_rw: '',
+                                        kelurahan: '',
+                                        kecamatan: '',
+                                        kabupaten: '',
+                                        provinsi: '',
+                                        diagnosis: '',
+                                        treatment_plan: '',
+                                        occupation: '',
+                                        income: ''
                                     });
                                     setFiles({
                                         ktp: null,
@@ -572,9 +899,11 @@ export default function DashboardRegisterPatientPage() {
                                         sktm: null,
                                         rujukan: null
                                     });
+                                    setPenungguForm({ patient_id: '', name: '', nik: '', phone: '', relation: '' });
+                                    setPenungguFiles({ ktp: null, kk: null });
                                 }}
                             >
-                                Daftarkan Pasien Lain
+                                {regNumber.startsWith('PENUNGGU') ? 'Daftarkan Penunggu Lain' : 'Daftarkan Pasien Lain'}
                             </Button>
                         </div>
                     </div>
