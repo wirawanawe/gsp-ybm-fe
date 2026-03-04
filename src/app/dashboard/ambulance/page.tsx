@@ -445,7 +445,6 @@ export default function AmbulancePage() {
                                                                 <span className="text-slate-400">
                                                                     ({p.registration_number})
                                                                 </span>
-                                                               
                                                             </div>
                                                         ))}
                                                     </div>
@@ -454,7 +453,17 @@ export default function AmbulancePage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-slate-700 font-medium">
-                                                {log.destination}
+                                                {Array.isArray(log.patients) && log.patients.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {log.patients.map((p) => (
+                                                            <div key={p.id} className="text-xs text-slate-700">
+                                                                {p.destination || '-'}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span>{log.destination || '-'}</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-sm">
                                                 <div className="text-slate-800 font-medium">
