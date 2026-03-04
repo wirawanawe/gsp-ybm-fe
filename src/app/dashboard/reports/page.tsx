@@ -24,6 +24,7 @@ type PatientInOutRow = {
     check_in_date: string;
     check_out_date: string | null;
     final_status: string | null;
+    departure_photo_path?: string | null;
 };
 
 type AmbulanceUsageRow = {
@@ -45,8 +46,8 @@ export default function ReportsPage() {
         deceasedPatients: 0,
         referredPatients: 0
     });
-    const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
-    const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -136,9 +137,11 @@ export default function ReportsPage() {
             const a = document.createElement('a');
             a.href = blobUrl;
             const suffix =
-                startDate === endDate
-                    ? startDate
-                    : `${startDate}_sampai_${endDate}`;
+                startDate && endDate
+                    ? (startDate === endDate
+                        ? startDate
+                        : `${startDate}_sampai_${endDate}`)
+                    : 'semua-data';
             a.download = `${filenamePrefix}-${suffix}.xlsx`;
             document.body.appendChild(a);
             a.click();
@@ -240,12 +243,14 @@ export default function ReportsPage() {
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <LogIn size={20} className="text-emerald-600" />
-                        <h2 className="font-bold text-slate-800">
-                            Laporan Pasien Masuk & Keluar -{' '}
-                            {startDate === endDate
-                                ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                                : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}
-                        </h2>
+                            <h2 className="font-bold text-slate-800">
+                                Laporan Pasien Masuk & Keluar
+                                {startDate && endDate ? (
+                                    <> - {startDate === endDate
+                                        ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                        : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
+                                ) : ' - Semua data'}
+                            </h2>
                     </div>
                     <Button
                         size="sm"
@@ -271,6 +276,7 @@ export default function ReportsPage() {
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kamar / Bed</th>
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Masuk</th>
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Keluar</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Dokumen Kepulangan</th>
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status Akhir</th>
                                 </tr>
                             </thead>
@@ -286,6 +292,20 @@ export default function ReportsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-sm">{formatDateTime(row.check_in_date)}</td>
                                         <td className="px-6 py-4 text-sm">{formatDateTime(row.check_out_date)}</td>
+                                        <td className="px-6 py-4 text-sm">
+                                            {row.departure_photo_path ? (
+                                                <a
+                                                    href={apiUrl(`/../${row.departure_photo_path}`)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-emerald-700 hover:text-emerald-900 underline text-xs"
+                                                >
+                                                    Lihat Dokumen
+                                                </a>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">-</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
                                                 row.final_status === 'Sembuh' ? 'bg-emerald-100 text-emerald-700' :

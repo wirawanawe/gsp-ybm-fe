@@ -20,6 +20,7 @@ export default function RoomsPage() {
     const [activeVisitor, setActiveVisitor] = useState<any | null>(null);
     const [checkoutBed, setCheckoutBed] = useState<any | null>(null);
     const [checkoutFinalStatus, setCheckoutFinalStatus] = useState<string>('Sembuh');
+    const [checkoutPhoto, setCheckoutPhoto] = useState<File | null>(null);
     const [transferBed, setTransferBed] = useState<any | null>(null);
     const [transferTargetBedId, setTransferTargetBedId] = useState<string>('');
     const [transferReason, setTransferReason] = useState<string>('');
@@ -171,18 +172,22 @@ export default function RoomsPage() {
         if (!checkoutBed) return;
 
         try {
+            const fd = new FormData();
+            fd.append('bed_id', String(checkoutBed.id));
+            fd.append('final_status', checkoutFinalStatus);
+            if (checkoutPhoto) {
+                fd.append('departure_photo', checkoutPhoto);
+            }
+
             const res = await fetch(apiUrl('/api/rooms/check-out'), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bed_id: checkoutBed.id,
-                    final_status: checkoutFinalStatus
-                })
+                body: fd
             });
 
             if (res.ok) {
                 alert('Checkout Berhasil!');
                 setCheckoutBed(null);
+                setCheckoutPhoto(null);
                 window.location.reload();
             } else {
                 const data = await res.json();
@@ -287,6 +292,20 @@ export default function RoomsPage() {
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Upload Dokumen Kepulangan (foto)
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-emerald-50 file:text-emerald-700 file:font-medium"
+                                    onChange={e => setCheckoutPhoto(e.target.files?.[0] || null)}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Opsional, unggah foto dokumentasi saat pasien pulang.
+                                </p>
                             </div>
                             <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                                 <Button type="button" variant="outline" onClick={() => setCheckoutBed(null)}>

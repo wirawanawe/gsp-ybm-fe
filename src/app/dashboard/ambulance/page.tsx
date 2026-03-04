@@ -22,6 +22,7 @@ type AmbulanceLog = {
     status: 'In-Journey' | 'Completed' | 'Cancelled';
     departure_time: string;
     return_time: string | null;
+    patients?: { id: number; patient_name: string; registration_number: string; destination?: string | null }[];
 };
 
 export default function AmbulancePage() {
@@ -33,14 +34,15 @@ export default function AmbulancePage() {
     const [formError, setFormError] = useState('');
     const [formState, setFormState] = useState<{
         ambulance_id: string;
-        destination: string;
         patient_id: string;
     }>({
         ambulance_id: '',
-        destination: '',
         patient_id: ''
     });
     const [patients, setPatients] = useState<{ id: number; name: string; registration_number: string }[]>([]);
+    const [patientSearch, setPatientSearch] = useState('');
+    const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([]);
+    const [patientDestinations, setPatientDestinations] = useState<Record<string, string>>({});
 
     const fetchData = async () => {
         setLoading(true);
@@ -80,7 +82,10 @@ export default function AmbulancePage() {
 
     const openBookingModal = () => {
         fetchPatients();
-        setFormState({ ambulance_id: '', destination: '', patient_id: '' });
+        setFormState({ ambulance_id: '', patient_id: '' });
+        setPatientSearch('');
+        setSelectedPatientIds([]);
+        setPatientDestinations({});
         setFormError('');
         setIsBookingOpen(true);
     };
@@ -88,18 +93,64 @@ export default function AmbulancePage() {
     const availableAmbulances = ambulances.filter(a => a.status === 'Available');
     const activeCount = ambulances.filter(a => a.status === 'In-Journey').length;
 
+    const filteredPatients = patients.filter(p => {
+        if (!patientSearch.trim()) return true;
+        const term = patientSearch.toLowerCase();
+        return (
+            p.name.toLowerCase().includes(term) ||
+            p.registration_number.toLowerCase().includes(term)
+        );
+    });
+
     const handleCreateBooking = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Validasi: minimal satu pasien dan tujuan per pasien wajib diisi
+        const ids = selectedPatientIds.length
+            ? selectedPatientIds
+            : (formState.patient_id ? [formState.patient_id] : []);
+
+        if (ids.length === 0) {
+            setFormError('Pilih minimal satu pasien untuk booking ambulans.');
+            return;
+        }
+
+        const missingDestination = ids.some(id => !patientDestinations[id] || !patientDestinations[id].trim());
+        if (missingDestination) {
+            setFormError('Lengkapi tujuan untuk setiap pasien yang dibawa ambulans.');
+            return;
+        }
+
         setIsSubmitting(true);
         setFormError('');
         try {
+            const patient_destinations: Record<string, string> = {};
+            ids.forEach(id => {
+                patient_destinations[id] = patientDestinations[id] || '';
+            });
+
+            const uniqueDest = Array.from(
+                new Set(
+                    ids
+                        .map(id => (patient_destinations[id] || '').trim())
+                        .filter(Boolean)
+                )
+            );
+            const globalDestination =
+                uniqueDest.length === 1
+                    ? uniqueDest[0]
+                    : uniqueDest.length > 1
+                        ? 'Multi tujuan (lihat per pasien)'
+                        : '';
+
             const res = await fetch(apiUrl('/api/ambulance/logs'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ambulance_id: Number(formState.ambulance_id),
-                    destination: formState.destination,
-                    patient_id: formState.patient_id ? Number(formState.patient_id) : null
+                    destination: globalDestination,
+                    patient_id: ids[0] ? Number(ids[0]) : null,
+                    patient_ids: ids.map(id => Number(id)),
+                    patient_destinations
                 })
             });
             const data = await res.json();
@@ -107,7 +158,9 @@ export default function AmbulancePage() {
                 throw new Error(data.message || 'Gagal membuat booking ambulans');
             }
             setIsBookingOpen(false);
-            setFormState({ ambulance_id: '', destination: '', patient_id: '' });
+            setFormState({ ambulance_id: '', patient_id: '' });
+            setSelectedPatientIds([]);
+            setPatientDestinations({});
             window.location.reload();
         } catch (err: any) {
             console.error('create booking error:', err);
@@ -182,43 +235,90 @@ export default function AmbulancePage() {
                                         ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-600 mb-1">
-                                        Tujuan Perjalanan
-                                    </label>
-                                    <Input
-                                        placeholder="Contoh: RSCM Jakarta"
-                                        value={formState.destination}
-                                        onChange={e =>
-                                            setFormState(prev => ({
-                                                ...prev,
-                                                destination: e.target.value
-                                            }))
-                                        }
-                                        required
-                                    />
-                                </div>
+                                {/* Tujuan sekarang diisi per pasien, bukan tujuan umum */}
                                 <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1">
                                         Pilih Pasien (opsional)
                                     </label>
-                                    <select
-                                        className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        value={formState.patient_id}
-                                        onChange={e =>
-                                            setFormState(prev => ({
-                                                ...prev,
-                                                patient_id: e.target.value
-                                            }))
-                                        }
-                                    >
-                                        <option value="">-- Pilih Pasien Terverifikasi --</option>
-                                        {patients.map(p => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.name} (Reg: {p.registration_number})
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="space-y-2">
+                                        <Input
+                                            placeholder="Cari nama / no. registrasi..."
+                                            value={patientSearch}
+                                            onChange={e => setPatientSearch(e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                        <select
+                                            className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                            value={formState.patient_id}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setFormState(prev => ({
+                                                    ...prev,
+                                                    patient_id: val
+                                                }));
+                                                if (val && !selectedPatientIds.includes(val)) {
+                                                    setSelectedPatientIds(prev => [...prev, val]);
+                                                }
+                                            }}
+                                        >
+                                            <option value="">-- Pilih Pasien Terverifikasi --</option>
+                                            {filteredPatients.map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name} (Reg: {p.registration_number})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {selectedPatientIds.length > 0 && (
+                                            <div className="space-y-2 pt-1">
+                                                {selectedPatientIds.map(id => {
+                                                    const p = patients.find(pt => String(pt.id) === id);
+                                                    if (!p) return null;
+                                                    return (
+                                                        <div
+                                                            key={id}
+                                                            className="flex flex-col sm:flex-row sm:items-center gap-2 border border-emerald-100 rounded-md px-2 py-2 bg-emerald-50/40"
+                                                        >
+                                                            <div className="flex-1 text-xs text-slate-800">
+                                                                <div className="font-medium">{p.name}</div>
+                                                                <div className="text-slate-500">
+                                                                    Reg: {p.registration_number}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <Input
+                                                                    placeholder="Tujuan pasien ini (opsional)"
+                                                                    value={patientDestinations[id] ?? ''}
+                                                                    onChange={e =>
+                                                                        setPatientDestinations(prev => ({
+                                                                            ...prev,
+                                                                            [id]: e.target.value
+                                                                        }))
+                                                                    }
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="text-emerald-700 hover:text-emerald-900 text-xs px-2"
+                                                                onClick={() => {
+                                                                    setSelectedPatientIds(prev =>
+                                                                        prev.filter(x => x !== id)
+                                                                    );
+                                                                    setPatientDestinations(prev => {
+                                                                        const n = { ...prev };
+                                                                        delete n[id];
+                                                                        return n;
+                                                                    });
+                                                                }}
+                                                            >
+                                                                Hapus
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
                                     {patients.length === 0 && (
                                         <p className="mt-1 text-xs text-slate-500">
                                             Belum ada pasien dengan status Layak Mustahik
@@ -316,6 +416,9 @@ export default function AmbulancePage() {
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">
                                             Ambulans
                                         </th>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">
+                                            Pasien
+                                        </th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Tujuan</th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Waktu</th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Status</th>
@@ -332,10 +435,22 @@ export default function AmbulancePage() {
                                                 <div className="font-semibold text-slate-800">
                                                     {log.ambulance_plate}
                                                 </div>
-                                                {log.patient_name && (
-                                                    <div className="text-xs text-slate-500 mt-1">
-                                                        Pasien: {log.patient_name}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700">
+                                                {Array.isArray(log.patients) && log.patients.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {log.patients.map((p) => (
+                                                            <div key={p.id} className="text-xs text-slate-700">
+                                                                {p.patient_name}{' '}
+                                                                <span className="text-slate-400">
+                                                                    ({p.registration_number})
+                                                                </span>
+                                                               
+                                                            </div>
+                                                        ))}
                                                     </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">-</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-slate-700 font-medium">
