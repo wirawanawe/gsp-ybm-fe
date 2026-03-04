@@ -48,6 +48,7 @@ export default function ReportsPage() {
     });
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [finalStatusFilter, setFinalStatusFilter] = useState<string>('');
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -85,6 +86,7 @@ export default function ReportsPage() {
             const params = new URLSearchParams();
             if (startDate) params.append('start_date', startDate);
             if (endDate) params.append('end_date', endDate);
+            if (finalStatusFilter) params.append('final_status', finalStatusFilter);
 
             const [inOutRes, ambRes] = await Promise.all([
                 fetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
@@ -107,7 +109,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         fetchReports();
-    }, [startDate, endDate]);
+    }, [startDate, endDate, finalStatusFilter]);
 
     const formatDateTime = (dt: string | null) => {
         if (!dt) return '-';
@@ -121,6 +123,7 @@ export default function ReportsPage() {
         const params = new URLSearchParams();
         if (startDate) params.append('start_date', startDate);
         if (endDate) params.append('end_date', endDate);
+        if (finalStatusFilter) params.append('final_status', finalStatusFilter);
         return params.toString();
     };
 
@@ -185,6 +188,17 @@ export default function ReportsPage() {
                             />
                         </div>
                     </div>
+                    <select
+                        className="h-10 px-3 rounded-md border border-slate-200 text-sm"
+                        value={finalStatusFilter}
+                        onChange={e => setFinalStatusFilter(e.target.value)}
+                    >
+                        <option value="">Semua Status</option>
+                        <option value="Sembuh">Sembuh / Pulang</option>
+                        <option value="Rujukan Lanjut">Rujukan Lanjut</option>
+                        <option value="Meninggal">Meninggal</option>
+                        <option value="Masih dirawat">Masih dirawat</option>
+                    </select>
                     <Button
                         variant="outline"
                         size="sm"
