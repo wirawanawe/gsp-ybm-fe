@@ -9,6 +9,7 @@ import { apiUrl } from '@/lib/api';
 
 type Applicant = {
     id: number;
+    registration_id?: number | null;
     registration_number: string;
     name: string;
     nik: string;
@@ -16,6 +17,7 @@ type Applicant = {
     status_verification: string;
     status_rumah_singgah: string;
     created_at: string;
+    registration_created_at?: string;
     check_out_date: string | null;
 };
 
@@ -164,7 +166,7 @@ export default function PendaftarPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {filteredApplicants.map(p => (
-                                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                                    <tr key={p.registration_id != null ? `reg-${p.registration_id}` : `p-${p.id}`} className="hover:bg-slate-50/80 transition-colors">
                                         <td className="px-3 sm:px-4 py-3 align-top">
                                             <span className="font-mono text-[11px] font-semibold text-slate-700">
                                                 {p.registration_number}
@@ -176,7 +178,7 @@ export default function PendaftarPage() {
                                             <div className="text-[11px] text-slate-400 mt-0.5">Telp: {p.phone}</div>
                                         </td>
                                         <td className="px-3 sm:px-4 py-3 align-top text-xs text-slate-600 whitespace-nowrap">
-                                            {new Date(p.created_at).toLocaleDateString('id-ID', {
+                                            {new Date(p.registration_created_at ?? p.created_at).toLocaleDateString('id-ID', {
                                                 day: 'numeric',
                                                 month: 'short',
                                                 year: 'numeric'

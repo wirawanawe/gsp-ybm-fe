@@ -719,6 +719,7 @@ export default function SettingsPage() {
                             <thead className="bg-slate-50 border-y border-slate-200">
                                 <tr>
                                     <th className="px-4 py-2 font-semibold text-slate-700">No. Kamar</th>
+                                    <th className="px-4 py-2 font-semibold text-slate-700">Deskripsi Kamar</th>
                                     <th className="px-4 py-2 font-semibold text-slate-700">Lantai / Kapasitas</th>
                                     <th className="px-4 py-2 font-semibold text-slate-700 text-right">
                                         Aksi
@@ -731,13 +732,11 @@ export default function SettingsPage() {
                                         <td className="px-4 py-2 text-slate-800 font-medium">
                                             {r.room_number}
                                         </td>
+                                        <td className="px-4 py-2 text-slate-600 text-sm max-w-[200px]">
+                                            {r.description || '—'}
+                                        </td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">
                                             Lantai {r.floor} · {r.capacity} bed
-                                            {r.description && (
-                                                <div className="text-[11px] text-slate-500 mt-1">
-                                                    {r.description}
-                                                </div>
-                                            )}
                                         </td>
                                         <td className="px-4 py-2 text-right space-x-1">
                                             <Button

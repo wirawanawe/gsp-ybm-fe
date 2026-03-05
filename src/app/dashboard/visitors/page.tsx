@@ -8,12 +8,12 @@ import { apiUrl, API_BASE } from '@/lib/api';
 
 type Visitor = {
     id: number;
+    patient_id: number;
     name: string;
     nik: string;
     phone?: string | null;
     relation: string;
     patient_name: string;
-    registration_number: string;
     is_active: boolean;
     created_at: string;
     ktp_path?: string | null;
@@ -23,7 +23,6 @@ type Visitor = {
 type ActivePatient = {
     id: number;
     name: string;
-    registration_number: string;
 };
 
 export default function VisitorsPage() {
@@ -193,7 +192,7 @@ export default function VisitorsPage() {
                                         <option value="">-- Pilih Pasien --</option>
                                         {patients.map(p => (
                                             <option key={p.id} value={p.id}>
-                                                {p.name} (Reg: {p.registration_number})
+                                                {p.name} (ID: {p.id})
                                             </option>
                                         ))}
                                     </select>
@@ -366,7 +365,7 @@ export default function VisitorsPage() {
                                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-800">
                                         <div className="font-medium">{v.patient_name}</div>
                                         <div className="text-xs text-slate-500">
-                                            Reg: {v.registration_number}
+                                            ID Pasien: {v.patient_id}
                                         </div>
                                     </td>
                                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-600 text-sm whitespace-nowrap">

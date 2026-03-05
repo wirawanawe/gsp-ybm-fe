@@ -24,6 +24,10 @@ export default function RoomsPage() {
     const [transferBed, setTransferBed] = useState<any | null>(null);
     const [transferTargetBedId, setTransferTargetBedId] = useState<string>('');
     const [transferReason, setTransferReason] = useState<string>('');
+    const [addPenungguBed, setAddPenungguBed] = useState<any | null>(null);
+    const [addPenungguVisitorId, setAddPenungguVisitorId] = useState<string>('');
+    const [addPenungguVisitors, setAddPenungguVisitors] = useState<any[]>([]);
+    const [addPenungguSubmitting, setAddPenungguSubmitting] = useState(false);
 
     const fetchRooms = async () => {
         try {
@@ -44,13 +48,8 @@ export default function RoomsPage() {
             const data = await res.json();
             const list = Array.isArray(data) ? data : [];
 
-            // Saring: jangan tampilkan pasien yang status rumah singgah-nya sudah pulang
-            // atau sudah memiliki tanggal checkout.
-            const filtered = list.filter((p: any) => {
-                const status = (p.status_rumah_singgah || '').toString();
-                const checkOut = p.check_out_date;
-                return status !== 'Sudah Pulang' && !checkOut;
-            });
+            // Hanya tampilkan data pendaftar dengan status Menunggu (siap check-in)
+            const filtered = list.filter((p: any) => (p.status_rumah_singgah || '').toString() === 'Menunggu');
 
             setPatients(filtered);
         } catch (err) {
@@ -60,6 +59,50 @@ export default function RoomsPage() {
     };
 
     const [visitorsForPatient, setVisitorsForPatient] = useState<any[]>([]);
+
+    const openAddPenunggu = async (bed: any) => {
+        if (!bed?.stay_log_id || !bed?.stay_patient_id) return;
+        setAddPenungguBed(bed);
+        setAddPenungguVisitorId('');
+        try {
+            const res = await fetch(apiUrl(`/api/visitors?patient_id=${bed.stay_patient_id}`));
+            const data = await res.json();
+            const allVisitors = Array.isArray(data) ? data : [];
+            const alreadyIds = new Set((bed.stay_visitors || []).map((v: any) => String(v.id)));
+            const available = allVisitors.filter((v: any) => !alreadyIds.has(String(v.id)));
+            setAddPenungguVisitors(available);
+        } catch (err) {
+            console.error('fetch visitors for add penunggu:', err);
+            setAddPenungguVisitors([]);
+        }
+    };
+
+    const handleAddPenunggu = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!addPenungguBed?.stay_log_id || !addPenungguVisitorId) return;
+        setAddPenungguSubmitting(true);
+        try {
+            const res = await fetch(apiUrl(`/api/rooms/stay/${addPenungguBed.stay_log_id}/visitors`), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ visitor_id: addPenungguVisitorId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Penunggu berhasil ditambahkan.');
+                setAddPenungguBed(null);
+                setAddPenungguVisitorId('');
+                fetchRooms();
+            } else {
+                alert(data.message || 'Gagal menambah penunggu');
+            }
+        } catch (err) {
+            console.error('addPenunggu err:', err);
+            alert('Kesalahan jaringan');
+        } finally {
+            setAddPenungguSubmitting(false);
+        }
+    };
 
     const fetchVisitorForPatient = async (patientId: string) => {
         if (!patientId) {
@@ -320,6 +363,48 @@ export default function RoomsPage() {
                 </div>
             )}
 
+            {/* Modal Tambah Penunggu */}
+            {addPenungguBed && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h2 className="text-lg font-bold text-slate-800">Tambah Penunggu</h2>
+                            <button onClick={() => { setAddPenungguBed(null); setAddPenungguVisitorId(''); }} className="text-slate-400 hover:text-slate-700 p-1">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddPenunggu} className="p-4 sm:p-6 space-y-4">
+                            <p className="text-sm text-slate-600">
+                                Pasien: <strong>{addPenungguBed.patient_name}</strong> (Bed {addPenungguBed.bed_number})
+                            </p>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Pilih Penunggu</label>
+                                <select
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    value={addPenungguVisitorId}
+                                    onChange={e => setAddPenungguVisitorId(e.target.value)}
+                                    required
+                                >
+                                    <option value="">-- Pilih penunggu --</option>
+                                    {addPenungguVisitors.map((v: any) => (
+                                        <option key={v.id} value={v.id}>{v.name} ({v.relation})</option>
+                                    ))}
+                                </select>
+                                {addPenungguVisitors.length === 0 && (
+                                    <p className="text-xs text-slate-500 mt-1">Semua penunggu pasien ini sudah ditambahkan, atau belum ada data penunggu.</p>
+                                )}
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                                <Button type="button" variant="outline" onClick={() => setAddPenungguBed(null)}>Batal</Button>
+                                <Button type="submit" disabled={addPenungguSubmitting || !addPenungguVisitorId || addPenungguVisitors.length === 0} className="bg-emerald-600 hover:bg-emerald-700">
+                                    {addPenungguSubmitting ? 'Menyimpan...' : 'Tambah'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Check-In - Responsive */}
             {selectedBed && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -379,10 +464,13 @@ export default function RoomsPage() {
                                     <option value="">-- Tidak ada penunggu --</option>
                                     {visitorsForPatient.map(v => (
                                         <option key={v.id} value={v.id}>
-                                            {v.name} ({v.relation}){v.is_active ? ' - Aktif' : ''}
+                                            {v.name} ({v.relation}){v.is_active ? ' - Aktif' : ' - Terdaftar sebelumnya'}
                                         </option>
                                     ))}
                                 </select>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Menampilkan semua data penunggu yang pernah terdaftar untuk pasien ini (termasuk dari rawat sebelumnya).
+                                </p>
                             </div>
 
                             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
@@ -446,7 +534,12 @@ export default function RoomsPage() {
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm">
                                         <BedDouble size={20} className="text-slate-600" />
                                     </div>
-                                    Kamar {room.room_number}
+                                    <span>
+                                        Kamar {room.room_number}
+                                        {room.description && (
+                                            <span className="font-normal text-slate-600 ml-2">— {room.description}</span>
+                                        )}
+                                    </span>
                                 </h2>
                                 <div className="flex gap-3 text-sm">
                                     <span className="inline-flex items-center px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 font-medium">
@@ -515,8 +608,24 @@ export default function RoomsPage() {
                                                             })}
                                                         </div>
                                                     )}
+                                                    {(bed.stay_visitors?.length ?? 0) > 0 && (
+                                                        <div className="text-xs text-slate-600 mt-1">
+                                                            Penunggu: {(bed.stay_visitors as any[]).map((v: any) => v.name).join(', ')}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col gap-2">
+                                                    {bed.stay_log_id && (
+                                                        <Button
+                                                            variant="outline"
+                                                            className="w-full h-10 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 rounded-xl font-medium"
+                                                            size="sm"
+                                                            onClick={() => openAddPenunggu(bed)}
+                                                        >
+                                                            <UserPlus size={16} className="mr-2" />
+                                                            Tambah Penunggu
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         variant="outline"
                                                         className="w-full h-10 border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 rounded-xl font-medium"

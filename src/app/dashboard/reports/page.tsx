@@ -25,6 +25,7 @@ type PatientInOutRow = {
     check_out_date: string | null;
     final_status: string | null;
     departure_photo_path?: string | null;
+    transfer_reason?: string | null;
 };
 
 type AmbulanceUsageRow = {
@@ -290,7 +291,7 @@ export default function ReportsPage() {
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kamar / Bed</th>
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Masuk</th>
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Keluar</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Dokumen Kepulangan</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Deskripsi</th>
                                     <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status Akhir</th>
                                 </tr>
                             </thead>
@@ -307,14 +308,18 @@ export default function ReportsPage() {
                                         <td className="px-6 py-4 text-sm">{formatDateTime(row.check_in_date)}</td>
                                         <td className="px-6 py-4 text-sm">{formatDateTime(row.check_out_date)}</td>
                                         <td className="px-6 py-4 text-sm">
-                                            {row.departure_photo_path ? (
+                                            {row.final_status === 'Transfer' ? (
+                                                <span className="text-xs text-slate-700" title="Alasan pindah">
+                                                    {row.transfer_reason || '-'}
+                                                </span>
+                                            ) : (row.final_status === 'Rujukan Lanjut' || row.final_status === 'Sembuh' || row.final_status === 'Meninggal') && row.departure_photo_path ? (
                                                 <a
-                                                    href={apiUrl(`/../${row.departure_photo_path}`)}
+                                                    href={apiUrl(`/uploads/${row.departure_photo_path}`)}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     className="text-emerald-700 hover:text-emerald-900 underline text-xs"
                                                 >
-                                                    Lihat Dokumen
+                                                    Lihat Dokumen Kepulangan
                                                 </a>
                                             ) : (
                                                 <span className="text-xs text-slate-400">-</span>
