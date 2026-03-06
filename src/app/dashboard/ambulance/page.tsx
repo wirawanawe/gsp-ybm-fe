@@ -22,7 +22,7 @@ type AmbulanceLog = {
     status: 'In-Journey' | 'Completed' | 'Cancelled';
     departure_time: string;
     return_time: string | null;
-    patients?: { id: number; patient_name: string; registration_number: string; destination?: string | null }[];
+    patients?: { id: number; patient_name: string; registration_number: string; destination?: string | null; document_path?: string | null }[];
 };
 
 export default function AmbulancePage() {
@@ -43,6 +43,14 @@ export default function AmbulancePage() {
     const [patientSearch, setPatientSearch] = useState('');
     const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([]);
     const [patientDestinations, setPatientDestinations] = useState<Record<string, string>>({});
+    const [patientDocuments, setPatientDocuments] = useState<Record<string, File | null>>({});
+
+    // Waktu manual berangkat & kembali
+    const [departureTime, setDepartureTime] = useState('');
+    const [isCompleteOpen, setIsCompleteOpen] = useState(false);
+    const [completeLogId, setCompleteLogId] = useState<number | null>(null);
+    const [returnTime, setReturnTime] = useState('');
+    const [isCompleting, setIsCompleting] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -68,10 +76,10 @@ export default function AmbulancePage() {
         fetchData();
     }, []);
 
-    // Booking ambulans hanya dari Data Pendaftar (yang boleh masuk rumah singgah)
+    // Booking ambulans dari seluruh Data Pasien
     const fetchPatients = async () => {
         try {
-            const res = await fetch(apiUrl('/api/patients/applicants'));
+            const res = await fetch(apiUrl('/api/patients'));
             const data = await res.json();
             setPatients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -86,8 +94,32 @@ export default function AmbulancePage() {
         setPatientSearch('');
         setSelectedPatientIds([]);
         setPatientDestinations({});
+        setPatientDocuments({});
         setFormError('');
+        
+        // Default jam berangkat saat ini format datetime-local
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const date = String(now.getDate()).padStart(2, '0');
+        const hour = String(now.getHours()).padStart(2, '0');
+        const minute = String(now.getMinutes()).padStart(2, '0');
+        setDepartureTime(`${year}-${month}-${date}T${hour}:${minute}`);
+        
         setIsBookingOpen(true);
+    };
+
+    const openCompleteModal = (logId: number) => {
+        setCompleteLogId(logId);
+        // Default jam pulang saat ini format datetime-local
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const date = String(now.getDate()).padStart(2, '0');
+        const hour = String(now.getHours()).padStart(2, '0');
+        const minute = String(now.getMinutes()).padStart(2, '0');
+        setReturnTime(`${year}-${month}-${date}T${hour}:${minute}`);
+        setIsCompleteOpen(true);
     };
 
     const availableAmbulances = ambulances.filter(a => a.status === 'Available');
@@ -142,17 +174,42 @@ export default function AmbulancePage() {
                         ? 'Multi tujuan (lihat per pasien)'
                         : '';
 
-            const res = await fetch(apiUrl('/api/ambulance/logs'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ambulance_id: Number(formState.ambulance_id),
-                    destination: globalDestination,
-                    patient_id: ids[0] ? Number(ids[0]) : null,
-                    patient_ids: ids.map(id => Number(id)),
-                    patient_destinations
-                })
-            });
+            const hasFiles = ids.some(id => patientDocuments[id]);
+
+            let res: Response;
+            if (hasFiles) {
+                const fd = new FormData();
+                fd.append('ambulance_id', String(Number(formState.ambulance_id)));
+                fd.append('destination', globalDestination);
+                if (ids[0]) fd.append('patient_id', String(Number(ids[0])));
+                fd.append('patient_ids', JSON.stringify(ids.map(id => Number(id))));
+                fd.append('patient_destinations', JSON.stringify(patient_destinations));
+                ids.forEach(id => {
+                    if (patientDocuments[id]) {
+                        fd.append(`document_${id}`, patientDocuments[id] as File);
+                    }
+                });
+                if (departureTime) fd.append('departure_time', departureTime);
+
+                res = await fetch(apiUrl('/api/ambulance/logs'), {
+                    method: 'POST',
+                    body: fd
+                });
+            } else {
+                res = await fetch(apiUrl('/api/ambulance/logs'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ambulance_id: Number(formState.ambulance_id),
+                        destination: globalDestination,
+                        patient_id: ids[0] ? Number(ids[0]) : null,
+                        patient_ids: ids.map(id => Number(id)),
+                        patient_destinations,
+                        departure_time: departureTime || null
+                    })
+                });
+            }
+
             const data = await res.json();
             if (!res.ok) {
                 throw new Error(data.message || 'Gagal membuat booking ambulans');
@@ -161,6 +218,7 @@ export default function AmbulancePage() {
             setFormState({ ambulance_id: '', patient_id: '' });
             setSelectedPatientIds([]);
             setPatientDestinations({});
+            setPatientDocuments({});
             window.location.reload();
         } catch (err: any) {
             console.error('create booking error:', err);
@@ -170,20 +228,31 @@ export default function AmbulancePage() {
         }
     };
 
-    const handleCompleteTrip = async (logId: number) => {
+    const handleCompleteTrip = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!completeLogId) return;
+
+        setIsCompleting(true);
         try {
             const res = await fetch(
-                apiUrl(`/api/ambulance/logs/${logId}/complete`),
-                { method: 'PUT' }
+                apiUrl(`/api/ambulance/logs/${completeLogId}/complete`),
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ return_time: returnTime || null })
+                }
             );
             const data = await res.json();
             if (!res.ok) {
                 throw new Error(data.message || 'Gagal menyelesaikan trip');
             }
+            setIsCompleteOpen(false);
             window.location.reload();
-        } catch (err) {
+        } catch (err: any) {
             console.error('complete trip error:', err);
-            alert('Gagal menyelesaikan trip ambulans');
+            alert(err.message || 'Gagal menyelesaikan trip ambulans');
+        } finally {
+            setIsCompleting(false);
         }
     };
 
@@ -212,6 +281,18 @@ export default function AmbulancePage() {
                                 </div>
                             )}
                             <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Tanggal & Jam Berangkat
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        required
+                                        className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        value={departureTime}
+                                        onChange={e => setDepartureTime(e.target.value)}
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1">
                                         Pilih Ambulans Tersedia
@@ -261,7 +342,7 @@ export default function AmbulancePage() {
                                                 }
                                             }}
                                         >
-                                            <option value="">-- Pilih Pasien Terverifikasi --</option>
+                                            <option value="">-- Pilih Pasien --</option>
                                             {filteredPatients.map(p => (
                                                 <option key={p.id} value={p.id}>
                                                     {p.name} (Reg: {p.registration_number})
@@ -284,7 +365,7 @@ export default function AmbulancePage() {
                                                                     Reg: {p.registration_number}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex-1">
+                                                            <div className="flex-1 space-y-1">
                                                                 <Input
                                                                     placeholder="Tujuan pasien ini (opsional)"
                                                                     value={patientDestinations[id] ?? ''}
@@ -296,15 +377,32 @@ export default function AmbulancePage() {
                                                                     }
                                                                     className="h-8 text-xs"
                                                                 />
+                                                                <div>
+                                                                    <label className="text-xs text-slate-500 mb-0.5 block">Upload Dokumen</label>
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*,application/pdf"
+                                                                        className="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-emerald-50 file:text-emerald-700 file:font-medium"
+                                                                        onChange={e => {
+                                                                            const file = e.target.files?.[0] || null;
+                                                                            setPatientDocuments(prev => ({ ...prev, [id]: file }));
+                                                                        }}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                             <button
                                                                 type="button"
-                                                                className="text-emerald-700 hover:text-emerald-900 text-xs px-2"
+                                                                className="text-emerald-700 hover:text-emerald-900 text-xs px-2 self-start mt-1"
                                                                 onClick={() => {
                                                                     setSelectedPatientIds(prev =>
                                                                         prev.filter(x => x !== id)
                                                                     );
                                                                     setPatientDestinations(prev => {
+                                                                        const n = { ...prev };
+                                                                        delete n[id];
+                                                                        return n;
+                                                                    });
+                                                                    setPatientDocuments(prev => {
                                                                         const n = { ...prev };
                                                                         delete n[id];
                                                                         return n;
@@ -321,7 +419,7 @@ export default function AmbulancePage() {
                                     </div>
                                     {patients.length === 0 && (
                                         <p className="mt-1 text-xs text-slate-500">
-                                            Belum ada pasien dengan status Layak Mustahik
+                                            Belum ada data pasien
                                         </p>
                                     )}
                                 </div>
@@ -341,6 +439,56 @@ export default function AmbulancePage() {
                                     className="bg-emerald-600 hover:bg-emerald-700"
                                 >
                                     {isSubmitting ? 'Menyimpan...' : 'Simpan Booking'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Complete Trip */}
+            {isCompleteOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate pr-2">
+                                Selesaikan Trip
+                            </h2>
+                            <button
+                                onClick={() => setIsCompleteOpen(false)}
+                                className="text-slate-400 hover:text-slate-700 shrink-0 p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleCompleteTrip} className="p-4 sm:p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">
+                                    Tanggal & Jam Kembali
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    required
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    value={returnTime}
+                                    onChange={e => setReturnTime(e.target.value)}
+                                />
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsCompleteOpen(false)}
+                                    disabled={isCompleting}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isCompleting}
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    {isCompleting ? 'Menyimpan...' : 'Selesai'}
                                 </Button>
                             </div>
                         </form>
@@ -420,6 +568,7 @@ export default function AmbulancePage() {
                                             Pasien
                                         </th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Tujuan</th>
+                                        <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Dokumentasi</th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Waktu</th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm whitespace-nowrap">Status</th>
                                         <th className="px-3 sm:px-6 py-3 font-semibold text-slate-700 text-xs sm:text-sm text-right whitespace-nowrap">Aksi</th>
@@ -463,6 +612,31 @@ export default function AmbulancePage() {
                                                     </div>
                                                 ) : (
                                                     <span>{log.destination || '-'}</span>
+                                                )}
+                                            </td>
+                                            {/* Dokumentasi column */}
+                                            <td className="px-6 py-4">
+                                                {Array.isArray(log.patients) && log.patients.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {log.patients.map((p) => (
+                                                            <div key={p.id} className="text-xs">
+                                                                {p.document_path ? (
+                                                                    <a
+                                                                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3331'}/uploads/${p.document_path}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-emerald-600 hover:text-emerald-800 underline truncate max-w-[120px] block"
+                                                                    >
+                                                                        📄 {p.patient_name}
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-slate-400">-</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 text-xs">-</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-sm">
@@ -513,7 +687,7 @@ export default function AmbulancePage() {
                                                         variant="outline"
                                                         size="sm"
                                                         className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs h-8"
-                                                        onClick={() => handleCompleteTrip(log.id)}
+                                                        onClick={() => openCompleteModal(log.id)}
                                                     >
                                                         Selesaikan Trip
                                                     </Button>

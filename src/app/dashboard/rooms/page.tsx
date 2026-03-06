@@ -21,6 +21,8 @@ export default function RoomsPage() {
     const [checkoutBed, setCheckoutBed] = useState<any | null>(null);
     const [checkoutFinalStatus, setCheckoutFinalStatus] = useState<string>('Sembuh');
     const [checkoutPhoto, setCheckoutPhoto] = useState<File | null>(null);
+    const [checkInDate, setCheckInDate] = useState<string>('');
+    const [checkOutDate, setCheckOutDate] = useState<string>('');
     const [transferBed, setTransferBed] = useState<any | null>(null);
     const [transferTargetBedId, setTransferTargetBedId] = useState<string>('');
     const [transferReason, setTransferReason] = useState<string>('');
@@ -148,6 +150,12 @@ export default function RoomsPage() {
         setVisitorsForPatient([]);
     }, [selectedBed]);
 
+    const getNowLocal = () => {
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    };
+
     const handleCheckIn = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedBed || !formData.patient_id) return;
@@ -162,7 +170,8 @@ export default function RoomsPage() {
                     patient_id: formData.patient_id,
                     visitor_id: formData.visitor_id || null,
                     companion_name: formData.companion_name,
-                    companion_nik: formData.companion_nik
+                    companion_nik: formData.companion_nik,
+                    check_in_date: checkInDate || undefined
                 })
             });
 
@@ -221,6 +230,9 @@ export default function RoomsPage() {
             if (checkoutPhoto) {
                 fd.append('departure_photo', checkoutPhoto);
             }
+            if (checkOutDate) {
+                fd.append('check_out_date', checkOutDate);
+            }
 
             const res = await fetch(apiUrl('/api/rooms/check-out'), {
                 method: 'PUT',
@@ -231,6 +243,7 @@ export default function RoomsPage() {
                 alert('Checkout Berhasil!');
                 setCheckoutBed(null);
                 setCheckoutPhoto(null);
+                setCheckOutDate('');
                 window.location.reload();
             } else {
                 const data = await res.json();
@@ -323,6 +336,16 @@ export default function RoomsPage() {
                             <p className="text-sm text-slate-600">
                                 Pasien: <strong>{checkoutBed.patient_name}</strong> (Bed {checkoutBed.bed_number})
                             </p>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Tanggal &amp; Jam Keluar</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={checkOutDate}
+                                    onChange={e => setCheckOutDate(e.target.value)}
+                                    required
+                                />
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Status Keluar</label>
                                 <select
@@ -420,6 +443,16 @@ export default function RoomsPage() {
                         </div>
 
                         <form onSubmit={handleCheckIn} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal &amp; Jam Masuk</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={checkInDate}
+                                    onChange={e => setCheckInDate(e.target.value)}
+                                    required
+                                />
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Pilih Pasien</label>
                                 <select
@@ -584,7 +617,7 @@ export default function RoomsPage() {
                                             <Button
                                                 className="w-full h-11 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-xl shadow-sm"
                                                 size="sm"
-                                                onClick={() => setSelectedBed(bed)}
+                                                onClick={() => { setSelectedBed(bed); setCheckInDate(getNowLocal()); }}
                                             >
                                                 <UserPlus size={18} className="mr-2" />
                                                 Check-in Pasien
@@ -647,6 +680,7 @@ export default function RoomsPage() {
                                                             setCheckoutBed(bed);
                                                             setTransferBed(null);
                                                             setCheckoutFinalStatus('Sembuh');
+                                                            setCheckOutDate(getNowLocal());
                                                         }}
                                                     >
                                                         Check Out / Pulang
