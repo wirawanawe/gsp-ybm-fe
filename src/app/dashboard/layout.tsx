@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, authFetch } from '@/lib/api';
 import {
     Users,
     UserCheck,
@@ -118,7 +118,7 @@ const sidebarLinks: SidebarLink[] = [
         name: 'Manajemen Kamar',
         href: '/dashboard/rooms',
         icon: BedDouble,
-        roles: ['Petugas Front Desk','Sistem Pengelola', 'Admin YBM'],
+        roles: ['Petugas Front Desk', 'Sistem Pengelola', 'Admin YBM'],
     },
     {
         name: 'Logistik Ambulans',
@@ -202,7 +202,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         const fetchPending = async () => {
             try {
-                const res = await fetch(apiUrl('/api/patients/pending-count'));
+                const res = await authFetch(apiUrl('/api/patients/pending-count'));
                 const data = await res.json();
                 const count = data?.count ?? 0;
                 setPendingCount(count);
@@ -279,8 +279,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         <Link
                                             href={link.href}
                                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                                                    ? 'bg-emerald-600/10 text-emerald-400 font-medium'
-                                                    : 'hover:bg-slate-800 hover:text-white'
+                                                ? 'bg-emerald-600/10 text-emerald-400 font-medium'
+                                                : 'hover:bg-slate-800 hover:text-white'
                                                 }`}
                                         >
                                             <div className="relative">
@@ -322,7 +322,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0">
-                        
+
                         <div className="relative" ref={profileRef}>
                             <button
                                 onClick={() => setProfileOpen((o) => !o)}

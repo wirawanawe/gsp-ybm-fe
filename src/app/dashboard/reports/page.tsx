@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, authFetch } from '@/lib/api';
 
 type OccupancyStats = {
     totalPatients: number;
@@ -57,7 +57,7 @@ export default function ReportsPage() {
 
     const fetchStats = async () => {
         try {
-            const res = await fetch(apiUrl('/api/reports/occupancy'));
+            const res = await authFetch(apiUrl('/api/reports/occupancy'));
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Gagal mengambil data');
             setStats({
@@ -90,8 +90,8 @@ export default function ReportsPage() {
             if (finalStatusFilter) params.append('final_status', finalStatusFilter);
 
             const [inOutRes, ambRes] = await Promise.all([
-                fetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
-                fetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`))
+                authFetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
+                authFetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`))
             ]);
             const inOutData = await inOutRes.json();
             const ambData = await ambRes.json();
@@ -132,7 +132,7 @@ export default function ReportsPage() {
         try {
             const qs = buildDateQuery();
             const url = apiUrl(`/api/reports/${path}?${qs}`);
-            const res = await fetch(url);
+            const res = await authFetch(url);
             if (!res.ok) {
                 throw new Error('Gagal mengunduh laporan');
             }
@@ -258,14 +258,14 @@ export default function ReportsPage() {
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <LogIn size={20} className="text-emerald-600" />
-                            <h2 className="font-bold text-slate-800">
-                                Laporan Pasien Masuk & Keluar
-                                {startDate && endDate ? (
-                                    <> - {startDate === endDate
-                                        ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                                        : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
-                                ) : ' - Semua data'}
-                            </h2>
+                        <h2 className="font-bold text-slate-800">
+                            Laporan Pasien Masuk & Keluar
+                            {startDate && endDate ? (
+                                <> - {startDate === endDate
+                                    ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                    : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
+                            ) : ' - Semua data'}
+                        </h2>
                     </div>
                     <Button
                         size="sm"
@@ -326,12 +326,11 @@ export default function ReportsPage() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
-                                                row.final_status === 'Sembuh' ? 'bg-emerald-100 text-emerald-700' :
+                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.final_status === 'Sembuh' ? 'bg-emerald-100 text-emerald-700' :
                                                 row.final_status === 'Rujukan Lanjut' ? 'bg-amber-100 text-amber-700' :
-                                                row.final_status === 'Meninggal' ? 'bg-rose-100 text-rose-700' :
-                                                'bg-slate-100 text-slate-600'
-                                            }`}>
+                                                    row.final_status === 'Meninggal' ? 'bg-rose-100 text-rose-700' :
+                                                        'bg-slate-100 text-slate-600'
+                                                }`}>
                                                 {row.final_status || 'Masih dirawat'}
                                             </span>
                                         </td>
@@ -395,9 +394,8 @@ export default function ReportsPage() {
                                         <td className="px-6 py-4 text-sm">{formatDateTime(row.departure_time)}</td>
                                         <td className="px-6 py-4 text-sm">{formatDateTime(row.return_time)}</td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
-                                                row.status === 'In-Journey' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                                            }`}>
+                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.status === 'In-Journey' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                                                }`}>
                                                 {row.status === 'In-Journey' ? 'Dalam Perjalanan' : 'Selesai'}
                                             </span>
                                         </td>

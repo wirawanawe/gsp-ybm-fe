@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, Plus, Navigation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, authFetch } from '@/lib/api';
 
 type Ambulance = {
     id: number;
@@ -56,8 +56,8 @@ export default function AmbulancePage() {
         setLoading(true);
         try {
             const [logsRes, ambRes] = await Promise.all([
-                fetch(apiUrl('/api/ambulance/logs')),
-                fetch(apiUrl('/api/ambulance'))
+                authFetch(apiUrl('/api/ambulance/logs')),
+                authFetch(apiUrl('/api/ambulance'))
             ]);
             const logsData = await logsRes.json();
             const ambData = await ambRes.json();
@@ -79,7 +79,7 @@ export default function AmbulancePage() {
     // Booking ambulans dari seluruh Data Pasien
     const fetchPatients = async () => {
         try {
-            const res = await fetch(apiUrl('/api/patients'));
+            const res = await authFetch(apiUrl('/api/patients'));
             const data = await res.json();
             setPatients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -96,7 +96,7 @@ export default function AmbulancePage() {
         setPatientDestinations({});
         setPatientDocuments({});
         setFormError('');
-        
+
         // Default jam berangkat saat ini format datetime-local
         const now = new Date();
         const year = now.getFullYear();
@@ -105,7 +105,7 @@ export default function AmbulancePage() {
         const hour = String(now.getHours()).padStart(2, '0');
         const minute = String(now.getMinutes()).padStart(2, '0');
         setDepartureTime(`${year}-${month}-${date}T${hour}:${minute}`);
-        
+
         setIsBookingOpen(true);
     };
 
@@ -191,12 +191,12 @@ export default function AmbulancePage() {
                 });
                 if (departureTime) fd.append('departure_time', departureTime);
 
-                res = await fetch(apiUrl('/api/ambulance/logs'), {
+                res = await authFetch(apiUrl('/api/ambulance/logs'), {
                     method: 'POST',
                     body: fd
                 });
             } else {
-                res = await fetch(apiUrl('/api/ambulance/logs'), {
+                res = await authFetch(apiUrl('/api/ambulance/logs'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -657,24 +657,23 @@ export default function AmbulancePage() {
                                                     Kembali:{' '}
                                                     {log.return_time
                                                         ? new Date(
-                                                              log.return_time
-                                                          ).toLocaleString('id-ID', {
-                                                              day: 'numeric',
-                                                              month: 'short',
-                                                              year: 'numeric',
-                                                              hour: '2-digit',
-                                                              minute: '2-digit'
-                                                          })
+                                                            log.return_time
+                                                        ).toLocaleString('id-ID', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })
                                                         : '-'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                                                        log.status === 'In-Journey'
+                                                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${log.status === 'In-Journey'
                                                             ? 'bg-amber-100 text-amber-700 border-amber-200'
                                                             : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {log.status === 'In-Journey'
                                                         ? 'Dalam Perjalanan'

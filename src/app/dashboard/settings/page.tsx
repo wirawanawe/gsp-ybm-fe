@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Wrench, Ambulance, UserCog, BedSingle, PlusCircle, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, authFetch } from '@/lib/api';
 
 type AmbulanceType = {
     id: number;
@@ -66,9 +66,9 @@ export default function SettingsPage() {
         setLoading(true);
         try {
             const [ambRes, userRes, roomRes] = await Promise.all([
-                fetch(apiUrl('/api/ambulance')),
-                fetch(apiUrl('/api/users')),
-                fetch(apiUrl('/api/rooms'))
+                authFetch(apiUrl('/api/ambulance')),
+                authFetch(apiUrl('/api/users')),
+                authFetch(apiUrl('/api/rooms'))
             ]);
 
             const [ambData, userData, roomData] = await Promise.all([
@@ -94,7 +94,7 @@ export default function SettingsPage() {
     // Pastikan kamar baru memiliki bed di database supaya muncul di Manajemen Kamar
     const ensureRoomBeds = async (roomId: number, capacity: number) => {
         try {
-            const roomRes = await fetch(apiUrl(`/api/rooms/${roomId}`));
+            const roomRes = await authFetch(apiUrl(`/api/rooms/${roomId}`));
             const roomData = await roomRes.json();
 
             const beds = Array.isArray(roomData.beds) ? roomData.beds : [];
@@ -105,7 +105,7 @@ export default function SettingsPage() {
 
             const totalBeds = Math.max(1, capacity || 1);
             for (let i = 1; i <= totalBeds; i++) {
-                await fetch(apiUrl(`/api/rooms/${roomId}/beds`), {
+                await authFetch(apiUrl(`/api/rooms/${roomId}/beds`), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -178,7 +178,7 @@ export default function SettingsPage() {
             if (type === 'user') url = apiUrl(`/api/users/${id}`);
             if (type === 'room') url = apiUrl(`/api/rooms/${id}`);
 
-            const res = await fetch(url, { method: 'DELETE' });
+            const res = await authFetch(url, { method: 'DELETE' });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Gagal menghapus');
             window.location.reload();
@@ -604,13 +604,12 @@ export default function SettingsPage() {
                                         </td>
                                         <td className="px-4 py-2">
                                             <span
-                                                className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${
-                                                    a.status === 'Available'
-                                                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                                                        : a.status === 'In-Journey'
+                                                className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${a.status === 'Available'
+                                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                                    : a.status === 'In-Journey'
                                                         ? 'bg-amber-100 text-amber-700 border-amber-200'
                                                         : 'bg-slate-100 text-slate-600 border-slate-200'
-                                                }`}
+                                                    }`}
                                             >
                                                 {a.status}
                                             </span>

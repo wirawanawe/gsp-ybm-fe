@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle, Upload, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { apiUrl, API_BASE } from '@/lib/api';
+import { apiUrl, API_BASE, authFetch } from '@/lib/api';
 
 const DOC_TYPES = [
     { id: 'ktp', label: 'KTP Pasien' },
@@ -91,7 +91,7 @@ export default function PatientsPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(apiUrl('/api/patients'));
+            const res = await authFetch(apiUrl('/api/patients'));
             const data = await res.json();
             if (!res.ok) {
                 setError((data as { message?: string })?.message || `Gagal memuat data (${res.status})`);
@@ -119,7 +119,7 @@ export default function PatientsPage() {
         setDocsLoading(true);
         setDocuments([]);
         try {
-            const res = await fetch(apiUrl(`/api/patients/${p.id}/documents`));
+            const res = await authFetch(apiUrl(`/api/patients/${p.id}/documents`));
             const data = await res.json();
             setDocuments(Array.isArray(data) ? data : []);
         } catch {
@@ -130,8 +130,8 @@ export default function PatientsPage() {
     };
 
     const hasDocType = (docType: { id: string; label: string }) =>
-        documents.some(d => 
-            d.document_type === docType.label || 
+        documents.some(d =>
+            d.document_type === docType.label ||
             d.document_type?.toLowerCase().includes(docType.id)
         );
 
@@ -148,14 +148,14 @@ export default function PatientsPage() {
         try {
             const fd = new FormData();
             toSend.forEach(([key, file]) => fd.append(key, file));
-            const res = await fetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`), {
+            const res = await authFetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`), {
                 method: 'POST',
                 body: fd
             });
             const data = await res.json();
             if (!res.ok) throw new Error((data as { message?: string }).message || 'Gagal mengunggah berkas');
             setUploadFiles({ ktp: null, kk: null, bpjs: null, sktm: null, rujukan: null });
-            const docsRes = await fetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`));
+            const docsRes = await authFetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`));
             const list = await docsRes.json();
             setDocuments(Array.isArray(list) ? list : []);
         } catch (err: any) {
@@ -203,7 +203,7 @@ export default function PatientsPage() {
         setEditLoading(true);
         setEditError('');
         try {
-            const res = await fetch(apiUrl(`/api/patients/${editPatient.id}`), {
+            const res = await authFetch(apiUrl(`/api/patients/${editPatient.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(editForm)
@@ -228,7 +228,7 @@ export default function PatientsPage() {
             return;
         }
         try {
-            const res = await fetch(apiUrl(`/api/patients/${p.id}`), {
+            const res = await authFetch(apiUrl(`/api/patients/${p.id}`), {
                 method: 'DELETE'
             });
             const data = await res.json();

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Search, Loader2, ClipboardList, AlertCircle, FileCheck, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, authFetch } from '@/lib/api';
 
 type Applicant = {
     id: number;
@@ -31,7 +31,7 @@ export default function PendaftarPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(apiUrl('/api/patients/applicants'));
+            const res = await authFetch(apiUrl('/api/patients/applicants'));
             const data = await res.json();
             if (!res.ok) {
                 setError((data as { message?: string })?.message || `Gagal memuat data (${res.status})`);
@@ -69,7 +69,7 @@ export default function PendaftarPage() {
         );
         if (!ok) return;
         try {
-            const res = await fetch(apiUrl(`/api/patients/${p.id}/verify`), {
+            const res = await authFetch(apiUrl(`/api/patients/${p.id}/verify`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status_verification: 'Rujukan Lain' })
@@ -186,13 +186,12 @@ export default function PendaftarPage() {
                                         </td>
                                         <td className="px-3 sm:px-4 py-3 align-top text-xs">
                                             <span
-                                                className={`inline-flex px-2 py-1 rounded-full border text-[11px] ${
-                                                    p.status_rumah_singgah === 'Dirawat'
+                                                className={`inline-flex px-2 py-1 rounded-full border text-[11px] ${p.status_rumah_singgah === 'Dirawat'
                                                         ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                                         : p.status_rumah_singgah === 'Sudah Pulang'
-                                                        ? 'bg-slate-100 text-slate-700 border-slate-300'
-                                                        : 'bg-amber-50 text-amber-700 border-amber-200'
-                                                }`}
+                                                            ? 'bg-slate-100 text-slate-700 border-slate-300'
+                                                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    }`}
                                             >
                                                 {p.status_rumah_singgah}
                                             </span>
@@ -200,10 +199,10 @@ export default function PendaftarPage() {
                                         <td className="px-3 sm:px-4 py-3 align-top text-xs text-slate-600 whitespace-nowrap">
                                             {p.check_out_date
                                                 ? new Date(p.check_out_date).toLocaleDateString('id-ID', {
-                                                      day: 'numeric',
-                                                      month: 'short',
-                                                      year: 'numeric'
-                                                  })
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric'
+                                                })
                                                 : '–'}
                                         </td>
                                         <td className="px-3 sm:px-4 py-3 align-top text-right">

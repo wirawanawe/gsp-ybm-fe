@@ -5,7 +5,7 @@ import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2, Upload, Pr
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { apiUrl, API_BASE } from '@/lib/api';
+import { apiUrl, API_BASE, authFetch } from '@/lib/api';
 
 const DOC_TYPES = [
     { id: 'ktp', label: 'KTP Pasien' },
@@ -124,7 +124,7 @@ export default function ScreeningPage() {
     const fetchPatients = async () => {
         setLoading(true);
         try {
-            const res = await fetch(apiUrl('/api/patients?status=Pending'));
+            const res = await authFetch(apiUrl('/api/patients?status=Pending'));
             const data = await res.json();
             setPatients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -161,7 +161,7 @@ export default function ScreeningPage() {
         setIsEditing(false);
         setDocsLoading(true);
         try {
-            const res = await fetch(apiUrl(`/api/patients/${patient.id}/documents`));
+            const res = await authFetch(apiUrl(`/api/patients/${patient.id}/documents`));
             const docs = await res.json();
             setDocuments(docs);
         } catch (err) {
@@ -175,7 +175,7 @@ export default function ScreeningPage() {
         if (!selectedPatient) return;
         setSavingEdit(true);
         try {
-            const res = await fetch(apiUrl(`/api/patients/${selectedPatient.id}`), {
+            const res = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(editForm)
@@ -205,14 +205,14 @@ export default function ScreeningPage() {
         try {
             const fd = new FormData();
             filesToSend.forEach(([key, file]) => fd.append(key, file!));
-            const res = await fetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`), {
+            const res = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`), {
                 method: 'POST',
                 body: fd
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Gagal mengunggah dokumen');
             setSusulanFiles({});
-            const docsRes = await fetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`));
+            const docsRes = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`));
             setDocuments(await docsRes.json());
         } catch (err: any) {
             alert(err.message || 'Gagal mengunggah dokumen');
@@ -225,7 +225,7 @@ export default function ScreeningPage() {
         if (!selectedPatient) return;
 
         try {
-            const res = await fetch(apiUrl(`/api/patients/${selectedPatient.id}/verify`), {
+            const res = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}/verify`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status_verification: status })

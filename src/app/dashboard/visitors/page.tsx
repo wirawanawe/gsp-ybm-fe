@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, Plus, Filter, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiUrl, API_BASE } from '@/lib/api';
+import { apiUrl, API_BASE, authFetch } from '@/lib/api';
 
 type Visitor = {
     id: number;
@@ -68,7 +68,7 @@ export default function VisitorsPage() {
     const fetchVisitors = async () => {
         setLoading(true);
         try {
-            const res = await fetch(apiUrl('/api/visitors'));
+            const res = await authFetch(apiUrl('/api/visitors'));
             const data = await res.json();
             setVisitors(data);
         } catch (err) {
@@ -81,7 +81,7 @@ export default function VisitorsPage() {
     const fetchActivePatients = async () => {
         try {
             // gunakan pasien yang sudah terverifikasi (Layak Mustahik) sebagai kandidat penunggu
-            const res = await fetch(apiUrl('/api/patients?status=Layak Mustahik'));
+            const res = await authFetch(apiUrl('/api/patients?status=Layak Mustahik'));
             const data = await res.json();
             setPatients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -120,7 +120,7 @@ export default function VisitorsPage() {
             if (formState.ktp) fd.append('ktp', formState.ktp);
             if (formState.kk) fd.append('kk', formState.kk);
 
-            const res = await fetch(apiUrl('/api/visitors'), {
+            const res = await authFetch(apiUrl('/api/visitors'), {
                 method: 'POST',
                 body: fd
             });
@@ -377,11 +377,10 @@ export default function VisitorsPage() {
                                     </td>
                                     <td className="px-3 sm:px-6 py-3 sm:py-4">
                                         <span
-                                            className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                                                v.is_active
+                                            className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${v.is_active
                                                     ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
                                                     : 'bg-slate-100 text-slate-600 border-slate-200'
-                                            }`}
+                                                }`}
                                         >
                                             {v.is_active ? 'Aktif Menunggu' : 'Selesai'}
                                         </span>
@@ -423,7 +422,7 @@ export default function VisitorsPage() {
                                                 onClick={async () => {
                                                     if (!window.confirm(`Hapus penunggu "${v.name}"?`)) return;
                                                     try {
-                                                        const res = await fetch(apiUrl(`/api/visitors/${v.id}`), {
+                                                        const res = await authFetch(apiUrl(`/api/visitors/${v.id}`), {
                                                             method: 'DELETE'
                                                         });
                                                         const data = await res.json();
@@ -525,7 +524,7 @@ export default function VisitorsPage() {
                                             const fd = new FormData();
                                             if (docUpload.ktp) fd.append('ktp', docUpload.ktp);
                                             if (docUpload.kk) fd.append('kk', docUpload.kk);
-                                            const res = await fetch(apiUrl(`/api/visitors/${docVisitor.id}`), {
+                                            const res = await authFetch(apiUrl(`/api/visitors/${docVisitor.id}`), {
                                                 method: 'PUT',
                                                 body: fd
                                             });
@@ -620,7 +619,7 @@ export default function VisitorsPage() {
                                 setEditLoading(true);
                                 setEditError('');
                                 try {
-                                    const res = await fetch(apiUrl(`/api/visitors/${editVisitor.id}`), {
+                                    const res = await authFetch(apiUrl(`/api/visitors/${editVisitor.id}`), {
                                         method: 'PUT',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify(editForm)

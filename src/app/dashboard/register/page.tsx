@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, authFetch } from '@/lib/api';
 
 export default function DashboardRegisterPatientPage() {
     const router = useRouter();
@@ -56,7 +56,7 @@ export default function DashboardRegisterPatientPage() {
 
     const fetchPatientsForPenunggu = async () => {
         try {
-            const res = await fetch(apiUrl('/api/patients?status=Layak Mustahik'));
+            const res = await authFetch(apiUrl('/api/patients?status=Layak Mustahik'));
             const data = await res.json();
             setPatientsForPenunggu(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -98,7 +98,7 @@ export default function DashboardRegisterPatientPage() {
             fd.append('relation', penungguForm.relation);
             if (penungguFiles.ktp) fd.append('ktp', penungguFiles.ktp);
             if (penungguFiles.kk) fd.append('kk', penungguFiles.kk);
-            const res = await fetch(apiUrl('/api/visitors'), { method: 'POST', body: fd });
+            const res = await authFetch(apiUrl('/api/visitors'), { method: 'POST', body: fd });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Gagal registrasi penunggu');
             setRegNumber(`PENUNGGU-${data.id}`);
@@ -137,7 +137,7 @@ export default function DashboardRegisterPatientPage() {
         setExistingPatientId(null);
         setExistingDocuments([]);
         try {
-            const res = await fetch(apiUrl(`/api/patients/by-nik?nik=${formData.nik}`));
+            const res = await authFetch(apiUrl(`/api/patients/by-nik?nik=${formData.nik}`));
             const data = await res.json();
             if (data && res.ok) {
                 if (!data.can_re_register) {
@@ -168,7 +168,7 @@ export default function DashboardRegisterPatientPage() {
                 setExistingPatientId(data.id);
 
                 // Ambil dokumen yang pernah diupload
-                const docsRes = await fetch(apiUrl(`/api/patients/${data.id}/documents`));
+                const docsRes = await authFetch(apiUrl(`/api/patients/${data.id}/documents`));
                 const docs = await docsRes.json();
                 setExistingDocuments(Array.isArray(docs) ? docs : []);
             }
@@ -207,10 +207,10 @@ export default function DashboardRegisterPatientPage() {
 
             if (existingPatientId) {
                 url = apiUrl(`/api/patients/${existingPatientId}/re-register`);
-                res = await fetch(url, { method: 'POST', body: formDataToSend });
+                res = await authFetch(url, { method: 'POST', body: formDataToSend });
             } else {
                 url = apiUrl('/api/patients/register');
-                res = await fetch(url, { method: 'POST', body: formDataToSend });
+                res = await authFetch(url, { method: 'POST', body: formDataToSend });
             }
 
             const data = await res.json();
@@ -262,70 +262,62 @@ export default function DashboardRegisterPatientPage() {
                     {/* Step 1 */}
                     <div className="flex flex-col items-center">
                         <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-                                step >= 1
-                                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                                    : 'bg-white border-slate-300 text-slate-400'
-                            }`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${step >= 1
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'bg-white border-slate-300 text-slate-400'
+                                }`}
                         >
                             {step > 1 ? <CheckCircle2 size={18} /> : '1'}
                         </div>
                         <span
-                            className={`text-xs mt-2 font-medium ${
-                                step >= 1 ? 'text-emerald-700' : 'text-slate-500'
-                            }`}
+                            className={`text-xs mt-2 font-medium ${step >= 1 ? 'text-emerald-700' : 'text-slate-500'
+                                }`}
                         >
                             Data Diri
                         </span>
                     </div>
 
                     <div
-                        className={`flex-1 h-1 mx-3 rounded-full transition-colors ${
-                            step >= 2 ? 'bg-emerald-600' : 'bg-slate-200'
-                        }`}
+                        className={`flex-1 h-1 mx-3 rounded-full transition-colors ${step >= 2 ? 'bg-emerald-600' : 'bg-slate-200'
+                            }`}
                     />
 
                     {/* Step 2 */}
                     <div className="flex flex-col items-center">
                         <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-                                step >= 2
-                                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                                    : 'bg-white border-slate-300 text-slate-400'
-                            }`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${step >= 2
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'bg-white border-slate-300 text-slate-400'
+                                }`}
                         >
                             {step > 2 ? <CheckCircle2 size={18} /> : '2'}
                         </div>
                         <span
-                            className={`text-xs mt-2 font-medium ${
-                                step >= 2 ? 'text-emerald-700' : 'text-slate-500'
-                            }`}
+                            className={`text-xs mt-2 font-medium ${step >= 2 ? 'text-emerald-700' : 'text-slate-500'
+                                }`}
                         >
                             Dokumen
                         </span>
                     </div>
 
                     <div
-                        className={`flex-1 h-1 mx-3 rounded-full transition-colors ${
-                            step >= 3 ? 'bg-emerald-600' : 'bg-slate-200'
-                        }`}
+                        className={`flex-1 h-1 mx-3 rounded-full transition-colors ${step >= 3 ? 'bg-emerald-600' : 'bg-slate-200'
+                            }`}
                     />
 
                     {/* Step 3 */}
                     <div className="flex flex-col items-center">
                         <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-                                step >= 3
-                                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                                    : 'bg-white border-slate-300 text-slate-400'
-                            }`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${step >= 3
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'bg-white border-slate-300 text-slate-400'
+                                }`}
                         >
                             3
                         </div>
                         <span
-                            className={`text-xs mt-2 font-medium ${
-                                step >= 3 ? 'text-emerald-700' : 'text-slate-500'
-                            }`}
+                            className={`text-xs mt-2 font-medium ${step >= 3 ? 'text-emerald-700' : 'text-slate-500'
+                                }`}
                         >
                             Selesai
                         </span>
@@ -471,220 +463,220 @@ export default function DashboardRegisterPatientPage() {
                                 </div>
                             </div>
                         ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="nik">NIK (16 digit) - Input terlebih dahulu untuk cari data</Label>
-                                <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="nik">NIK (16 digit) - Input terlebih dahulu untuk cari data</Label>
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <Input
+                                            id="nik"
+                                            name="nik"
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={16}
+                                            value={formData.nik}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '');
+                                                setFormData({ ...formData, nik: val });
+                                                if (errorMsg && val.length === 16) setErrorMsg('');
+                                                setDataFromExisting(false);
+                                                setExistingPatientId(null);
+                                                setExistingDocuments([]);
+                                            }}
+                                            placeholder="16 digit NIK sesuai KTP"
+                                            className="flex-1 w-full"
+                                            required
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleLookupByNik}
+                                            disabled={lookupLoading || formData.nik.length !== 16}
+                                            className="shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto"
+                                        >
+                                            {lookupLoading ? 'Mencari...' : (
+                                                <>
+                                                    <Search size={16} className="mr-1" />
+                                                    Cari Data
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                    {formData.nik && formData.nik.length !== 16 && (
+                                        <p className="text-xs text-amber-600">NIK harus tepat 16 digit untuk mencari data</p>
+                                    )}
+                                    <p className="text-xs text-slate-500">
+                                        Pasien yang pernah terdaftar: masukkan NIK lalu klik Cari Data. Form akan terisi otomatis.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nama Lengkap</Label>
                                     <Input
-                                        id="nik"
-                                        name="nik"
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={16}
-                                        value={formData.nik}
-                                        onChange={(e) => {
-                                            const val = e.target.value.replace(/\D/g, '');
-                                            setFormData({ ...formData, nik: val });
-                                            if (errorMsg && val.length === 16) setErrorMsg('');
-                                            setDataFromExisting(false);
-                                            setExistingPatientId(null);
-                                            setExistingDocuments([]);
-                                        }}
-                                        placeholder="16 digit NIK sesuai KTP"
-                                        className="flex-1 w-full"
+                                        id="name"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleInputChange}
+                                        placeholder="Sesuai KTP"
                                         required
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleLookupByNik}
-                                        disabled={lookupLoading || formData.nik.length !== 16}
-                                        className="shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto"
-                                    >
-                                        {lookupLoading ? 'Mencari...' : (
-                                            <>
-                                                <Search size={16} className="mr-1" />
-                                                Cari Data
-                                            </>
-                                        )}
-                                    </Button>
                                 </div>
-                                {formData.nik && formData.nik.length !== 16 && (
-                                    <p className="text-xs text-amber-600">NIK harus tepat 16 digit untuk mencari data</p>
-                                )}
-                                <p className="text-xs text-slate-500">
-                                    Pasien yang pernah terdaftar: masukkan NIK lalu klik Cari Data. Form akan terisi otomatis.
-                                </p>
+                                <div className="space-y-2">
+                                    <Label htmlFor="dob">Tanggal Lahir</Label>
+                                    <Input
+                                        id="dob"
+                                        name="dob"
+                                        type="date"
+                                        value={formData.dob}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="gender">Jenis Kelamin</Label>
+                                    <select
+                                        id="gender"
+                                        name="gender"
+                                        value={formData.gender}
+                                        onChange={handleInputChange}
+                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                                    >
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="age">Usia</Label>
+                                    <Input
+                                        id="age"
+                                        type="text"
+                                        readOnly
+                                        value={formData.dob ? (() => {
+                                            const today = new Date();
+                                            const birth = new Date(formData.dob);
+                                            let age = today.getFullYear() - birth.getFullYear();
+                                            const m = today.getMonth() - birth.getMonth();
+                                            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                                            return age >= 0 ? `${age} tahun` : '-';
+                                        })() : '-'}
+                                        className="bg-slate-50 text-slate-600"
+                                    />
+                                    <p className="text-xs text-slate-500">Otomatis dari Tanggal Lahir</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">No. Telepon / WhatsApp</Label>
+                                    <Input
+                                        id="phone"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleInputChange}
+                                        placeholder="08xxxxxxxxxx"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="address">Alamat Lengkap (KTP)</Label>
+                                    <textarea
+                                        id="address"
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={handleInputChange}
+                                        rows={2}
+                                        className="flex w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                                        placeholder="Jalan, Nomor rumah, dll"
+                                        required
+                                    ></textarea>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="rt_rw">RT/RW</Label>
+                                    <Input
+                                        id="rt_rw"
+                                        name="rt_rw"
+                                        value={formData.rt_rw}
+                                        onChange={handleInputChange}
+                                        placeholder="001/002"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="kelurahan">Kelurahan</Label>
+                                    <Input
+                                        id="kelurahan"
+                                        name="kelurahan"
+                                        value={formData.kelurahan}
+                                        onChange={handleInputChange}
+                                        placeholder="Nama kelurahan"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="kecamatan">Kecamatan</Label>
+                                    <Input
+                                        id="kecamatan"
+                                        name="kecamatan"
+                                        value={formData.kecamatan}
+                                        onChange={handleInputChange}
+                                        placeholder="Nama kecamatan"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="kabupaten">Kabupaten/Kota</Label>
+                                    <Input
+                                        id="kabupaten"
+                                        name="kabupaten"
+                                        value={formData.kabupaten}
+                                        onChange={handleInputChange}
+                                        placeholder="Kabupaten/Kota"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="provinsi">Provinsi</Label>
+                                    <Input
+                                        id="provinsi"
+                                        name="provinsi"
+                                        value={formData.provinsi}
+                                        onChange={handleInputChange}
+                                        placeholder="Provinsi"
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="diagnosis">Diagnosa Penyakit</Label>
+                                    <Input
+                                        id="diagnosis"
+                                        name="diagnosis"
+                                        value={formData.diagnosis}
+                                        onChange={handleInputChange}
+                                        placeholder="Diagnosa dari dokter/rumah sakit"
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="treatment_plan">Rencana Tindakan</Label>
+                                    <Input
+                                        id="treatment_plan"
+                                        name="treatment_plan"
+                                        value={formData.treatment_plan}
+                                        onChange={handleInputChange}
+                                        placeholder="Rencana pengobatan/tindakan medis"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="occupation">Pekerjaan</Label>
+                                    <Input
+                                        id="occupation"
+                                        name="occupation"
+                                        value={formData.occupation}
+                                        onChange={handleInputChange}
+                                        placeholder="Pekerjaan"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="income">Penghasilan</Label>
+                                    <Input
+                                        id="income"
+                                        name="income"
+                                        value={formData.income}
+                                        onChange={handleInputChange}
+                                        placeholder="Estimasi penghasilan/bulan"
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nama Lengkap</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleInputChange}
-                                    placeholder="Sesuai KTP"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="dob">Tanggal Lahir</Label>
-                                <Input
-                                    id="dob"
-                                    name="dob"
-                                    type="date"
-                                    value={formData.dob}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="gender">Jenis Kelamin</Label>
-                                <select
-                                    id="gender"
-                                    name="gender"
-                                    value={formData.gender}
-                                    onChange={handleInputChange}
-                                    className="flex h-10 w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                                >
-                                    <option value="Laki-laki">Laki-laki</option>
-                                    <option value="Perempuan">Perempuan</option>
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="age">Usia</Label>
-                                <Input
-                                    id="age"
-                                    type="text"
-                                    readOnly
-                                    value={formData.dob ? (() => {
-                                        const today = new Date();
-                                        const birth = new Date(formData.dob);
-                                        let age = today.getFullYear() - birth.getFullYear();
-                                        const m = today.getMonth() - birth.getMonth();
-                                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-                                        return age >= 0 ? `${age} tahun` : '-';
-                                    })() : '-'}
-                                    className="bg-slate-50 text-slate-600"
-                                />
-                                <p className="text-xs text-slate-500">Otomatis dari Tanggal Lahir</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">No. Telepon / WhatsApp</Label>
-                                <Input
-                                    id="phone"
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleInputChange}
-                                    placeholder="08xxxxxxxxxx"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="address">Alamat Lengkap (KTP)</Label>
-                                <textarea
-                                    id="address"
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleInputChange}
-                                    rows={2}
-                                    className="flex w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-                                    placeholder="Jalan, Nomor rumah, dll"
-                                    required
-                                ></textarea>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="rt_rw">RT/RW</Label>
-                                <Input
-                                    id="rt_rw"
-                                    name="rt_rw"
-                                    value={formData.rt_rw}
-                                    onChange={handleInputChange}
-                                    placeholder="001/002"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="kelurahan">Kelurahan</Label>
-                                <Input
-                                    id="kelurahan"
-                                    name="kelurahan"
-                                    value={formData.kelurahan}
-                                    onChange={handleInputChange}
-                                    placeholder="Nama kelurahan"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="kecamatan">Kecamatan</Label>
-                                <Input
-                                    id="kecamatan"
-                                    name="kecamatan"
-                                    value={formData.kecamatan}
-                                    onChange={handleInputChange}
-                                    placeholder="Nama kecamatan"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="kabupaten">Kabupaten/Kota</Label>
-                                <Input
-                                    id="kabupaten"
-                                    name="kabupaten"
-                                    value={formData.kabupaten}
-                                    onChange={handleInputChange}
-                                    placeholder="Kabupaten/Kota"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="provinsi">Provinsi</Label>
-                                <Input
-                                    id="provinsi"
-                                    name="provinsi"
-                                    value={formData.provinsi}
-                                    onChange={handleInputChange}
-                                    placeholder="Provinsi"
-                                />
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="diagnosis">Diagnosa Penyakit</Label>
-                                <Input
-                                    id="diagnosis"
-                                    name="diagnosis"
-                                    value={formData.diagnosis}
-                                    onChange={handleInputChange}
-                                    placeholder="Diagnosa dari dokter/rumah sakit"
-                                />
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="treatment_plan">Rencana Tindakan</Label>
-                                <Input
-                                    id="treatment_plan"
-                                    name="treatment_plan"
-                                    value={formData.treatment_plan}
-                                    onChange={handleInputChange}
-                                    placeholder="Rencana pengobatan/tindakan medis"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="occupation">Pekerjaan</Label>
-                                <Input
-                                    id="occupation"
-                                    name="occupation"
-                                    value={formData.occupation}
-                                    onChange={handleInputChange}
-                                    placeholder="Pekerjaan"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="income">Penghasilan</Label>
-                                <Input
-                                    id="income"
-                                    name="income"
-                                    value={formData.income}
-                                    onChange={handleInputChange}
-                                    placeholder="Estimasi penghasilan/bulan"
-                                />
-                            </div>
-                        </div>
                         )}
 
                         <div className="pt-4 flex justify-end">
@@ -762,18 +754,16 @@ export default function DashboardRegisterPatientPage() {
                             ].map(doc => (
                                 <div
                                     key={doc.id}
-                                    className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center text-center transition-colors cursor-pointer group ${
-                                        files[doc.id]
-                                            ? 'border-emerald-500 bg-emerald-50'
-                                            : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50'
-                                    }`}
+                                    className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center text-center transition-colors cursor-pointer group ${files[doc.id]
+                                        ? 'border-emerald-500 bg-emerald-50'
+                                        : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50'
+                                        }`}
                                 >
                                     <div
-                                        className={`p-2.5 rounded-full mb-2 transition-colors ${
-                                            files[doc.id]
-                                                ? 'bg-emerald-200 text-emerald-700'
-                                                : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-600'
-                                        }`}
+                                        className={`p-2.5 rounded-full mb-2 transition-colors ${files[doc.id]
+                                            ? 'bg-emerald-200 text-emerald-700'
+                                            : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-600'
+                                            }`}
                                     >
                                         {files[doc.id] ? (
                                             <CheckCircle2 size={18} />
