@@ -19,7 +19,18 @@ import {
     User,
     ClipboardList,
     ChevronDown,
-    Clock
+    Clock,
+    BookOpen,
+    CalendarDays,
+    Activity,
+    HeartPulse,
+    Wallet,
+    TrendingUp,
+    BarChart3,
+    ListChecks,
+    Stethoscope,
+    BookMarked,
+    LayoutDashboard,
 } from 'lucide-react';
 
 function HeaderClock({ className = '' }: { className?: string }) {
@@ -41,7 +52,7 @@ function HeaderClock({ className = '' }: { className?: string }) {
     );
 }
 
-const POLL_INTERVAL_MS = 30000; // 30 detik
+const POLL_INTERVAL_MS = 30000;
 
 function playNotificationSound() {
     try {
@@ -57,7 +68,6 @@ function playNotificationSound() {
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.3);
     } catch {
-        // Fallback: browser notification jika Audio API tidak didukung
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Verifikasi Pasien', { body: 'Ada data verifikasi pasien baru' });
         }
@@ -69,24 +79,20 @@ type SidebarLink = {
     href: string;
     icon: any;
     notificationKey?: 'screening';
-    /**
-     * Daftar role yang boleh melihat menu ini.
-     * Jika kosong / undefined berarti semua role boleh.
-     */
     roles?: string[];
 };
 
-const sidebarLinks: SidebarLink[] = [
-    // Hanya Admin YBM yang boleh melihat laporan
-    { name: 'Laporan', href: '/dashboard/reports', icon: PieChart, roles: ['Admin YBM'] },
+type SidebarGroup = {
+    groupName: string;
+    groupIcon: any;
+    roles?: string[];
+    links: SidebarLink[];
+};
 
-    // Petugas Front Desk (RS) + Admin YBM: pendaftaran & verifikasi
-    {
-        name: 'Pendaftaran',
-        href: '/dashboard/register',
-        icon: UserPlus,
-        roles: ['Petugas Front Desk', 'Admin YBM'],
-    },
+// Flat links (non-grouped) — tetap ada
+const flatLinks: SidebarLink[] = [
+    { name: 'Laporan', href: '/dashboard/reports', icon: PieChart, roles: ['Admin YBM'] },
+    { name: 'Pendaftaran', href: '/dashboard/register', icon: UserPlus, roles: ['Petugas Front Desk', 'Admin YBM'] },
     {
         name: 'Verifikasi Pasien',
         href: '/dashboard/screening',
@@ -94,47 +100,100 @@ const sidebarLinks: SidebarLink[] = [
         notificationKey: 'screening',
         roles: ['Petugas Front Desk', 'Sistem Pengelola', 'Admin YBM'],
     },
+    { name: 'Data Pasien', href: '/dashboard/patients', icon: User, roles: ['Sistem Pengelola', 'Admin YBM'] },
+    { name: 'Data Pendaftar', href: '/dashboard/pendaftar', icon: ClipboardList, roles: ['Petugas Front Desk', 'Sistem Pengelola', 'Admin YBM'] },
+    { name: 'Data Penunggu', href: '/dashboard/visitors', icon: Users, roles: ['Sistem Pengelola', 'Admin YBM'] },
+    { name: 'Manajemen Kamar', href: '/dashboard/rooms', icon: BedDouble, roles: ['Petugas Front Desk', 'Sistem Pengelola', 'Admin YBM'] },
+    { name: 'Logistik Ambulans', href: '/dashboard/ambulance', icon: Ambulance, roles: ['Sistem Pengelola', 'Admin YBM'] },
+    { name: 'Setting', href: '/dashboard/settings', icon: Settings, roles: ['Admin YBM'] },
+];
 
-    // Sistem Pengelola (Rumah Singgah) + Admin YBM: operasional rumah singgah
+// Grouped menus baru
+const groupedMenus: SidebarGroup[] = [
     {
-        name: 'Data Pasien',
-        href: '/dashboard/patients',
-        icon: User,
-        roles: ['Sistem Pengelola', 'Admin YBM'],
+        groupName: 'Kegiatan & Pembinaan',
+        groupIcon: BookOpen,
+        links: [
+            { name: 'Jadwal Tahsin', href: '/dashboard/kegiatan/tahsin', icon: BookMarked },
+            { name: 'Jadwal Taklim', href: '/dashboard/kegiatan/taklim', icon: CalendarDays },
+            { name: 'Kegiatan Harian', href: '/dashboard/kegiatan/harian', icon: ListChecks },
+            { name: 'Presensi', href: '/dashboard/kegiatan/presensi', icon: ClipboardList },
+        ],
     },
     {
-        name: 'Data Pendaftar',
-        href: '/dashboard/pendaftar',
-        icon: ClipboardList,
-        roles: ['Petugas Front Desk', 'Sistem Pengelola', 'Admin YBM'],
+        groupName: 'Layanan Kesehatan',
+        groupIcon: Stethoscope,
+        links: [
+            { name: 'Pencatatan Tensi', href: '/dashboard/kesehatan/tensi', icon: HeartPulse },
+            { name: 'Kondisi Pasien', href: '/dashboard/kesehatan/kondisi', icon: Activity },
+        ],
     },
     {
-        name: 'Data Penunggu',
-        href: '/dashboard/visitors',
-        icon: Users,
-        roles: ['Sistem Pengelola', 'Admin YBM'],
-    },
-    {
-        name: 'Manajemen Kamar',
-        href: '/dashboard/rooms',
-        icon: BedDouble,
-        roles: ['Petugas Front Desk', 'Sistem Pengelola', 'Admin YBM'],
-    },
-    {
-        name: 'Logistik Ambulans',
-        href: '/dashboard/ambulance',
-        icon: Ambulance,
-        roles: ['Sistem Pengelola', 'Admin YBM'],
-    },
-
-    // Hanya Admin YBM yang boleh membuka pengaturan master data
-    {
-        name: 'Setting',
-        href: '/dashboard/settings',
-        icon: Settings,
-        roles: ['Admin YBM'],
+        groupName: 'Keuangan',
+        groupIcon: Wallet,
+        links: [
+            { name: 'Dana Masuk', href: '/dashboard/keuangan/pemasukan', icon: TrendingUp },
+            { name: 'Pengeluaran', href: '/dashboard/keuangan/pengeluaran', icon: TrendingUp },
+            { name: 'Laporan Keuangan', href: '/dashboard/keuangan/laporan', icon: PieChart },
+            { name: 'Rekap', href: '/dashboard/keuangan/rekap', icon: BarChart3 },
+        ],
     },
 ];
+
+function SidebarGroupMenu({
+    group,
+    pathname,
+    pendingCount,
+}: {
+    group: SidebarGroup;
+    pathname: string;
+    pendingCount: number;
+}) {
+    const isGroupActive = group.links.some(l => pathname.startsWith(l.href));
+    const [open, setOpen] = useState(isGroupActive);
+    const Icon = group.groupIcon;
+
+    return (
+        <li>
+            <button
+                onClick={() => setOpen(o => !o)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+                    isGroupActive ? 'text-emerald-400 font-medium' : 'hover:bg-slate-800 hover:text-white'
+                }`}
+            >
+                <Icon size={18} className={isGroupActive ? 'text-emerald-400' : 'text-slate-400'} />
+                <span className="flex-1 text-sm">{group.groupName}</span>
+                <ChevronDown
+                    size={14}
+                    className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {open && (
+                <ul className="mt-1 ml-4 pl-3 border-l border-slate-700 space-y-0.5">
+                    {group.links.map(link => {
+                        const LinkIcon = link.icon;
+                        const isActive = pathname.startsWith(link.href);
+                        return (
+                            <li key={link.href}>
+                                <Link
+                                    href={link.href}
+                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-sm ${
+                                        isActive
+                                            ? 'bg-emerald-600/10 text-emerald-400 font-medium'
+                                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    }`}
+                                >
+                                    <LinkIcon size={15} className={isActive ? 'text-emerald-400' : 'text-slate-500'} />
+                                    {link.name}
+                                </Link>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+        </li>
+    );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -157,67 +216,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, []);
 
     useEffect(() => {
-        // Check authentication
         const token = localStorage.getItem('token');
         const userDataStr = localStorage.getItem('user');
-
-        if (!token || !userDataStr) {
-            router.push('/login');
-            return;
-        }
-
-        try {
-            setUser(JSON.parse(userDataStr));
-        } catch {
-            router.push('/login');
-        }
+        if (!token || !userDataStr) { router.push('/login'); return; }
+        try { setUser(JSON.parse(userDataStr)); } catch { router.push('/login'); }
     }, [router]);
 
-    // Batasi akses halaman berdasarkan role (misal: laporan & setting hanya Admin YBM)
     useEffect(() => {
         if (!user) return;
-        if (!pathname.startsWith('/dashboard')) return;
-
         const role = user.role as string;
-        const allowedLinks = sidebarLinks.filter(
-            (link) => !link.roles || link.roles.includes(role)
-        );
+        const allowedFlat = flatLinks.filter(l => !l.roles || l.roles.includes(role));
+        // Semua grouped menu tersedia untuk semua role
+        const allGroupedLinks = groupedMenus.flatMap(g => g.links);
+        const allAllowed = [...allowedFlat, ...allGroupedLinks];
 
-        // Jika tidak ada satu pun menu yang boleh, biarkan apa adanya (fallback)
-        if (allowedLinks.length === 0) return;
-
-        const isAllowedCurrentPath = allowedLinks.some((link) =>
-            pathname.startsWith(link.href)
-        );
-
-        // Jika user membuka URL yang tidak sesuai role, arahkan ke menu pertama yang diizinkan
-        if (!isAllowedCurrentPath) {
-            router.replace(allowedLinks[0].href);
+        if (!pathname.startsWith('/dashboard')) return;
+        // Dashboard root is always allowed
+        if (pathname === '/dashboard') return;
+        const isAllowed = allAllowed.some(l => pathname.startsWith(l.href));
+        if (!isAllowed && allowedFlat.length > 0) {
+            // For grouped paths, allow them
+            const isGroupedPath = groupedMenus.some(g => g.links.some(l => pathname.startsWith(l.href)));
+            if (!isGroupedPath) router.replace(allowedFlat[0].href);
         }
     }, [user, pathname, router]);
 
-    // Poll jumlah pasien pending verifikasi & notifikasi suara saat ada data baru
     useEffect(() => {
         if (!user) return;
-
         const fetchPending = async () => {
             try {
                 const res = await authFetch(apiUrl('/api/patients/pending-count'));
                 const data = await res.json();
                 const count = data?.count ?? 0;
                 setPendingCount(count);
-
-                // Bunyikan notifikasi jika jumlah bertambah (data baru masuk)
-                if (prevPendingRef.current !== null && count > prevPendingRef.current) {
-                    playNotificationSound();
-                }
+                if (prevPendingRef.current !== null && count > prevPendingRef.current) playNotificationSound();
                 prevPendingRef.current = count;
-            } catch {
-                // Ignore network errors saat polling
-            }
+            } catch { }
         };
-
-        fetchPending(); // Fetch segera saat mount
+        fetchPending();
         const interval = setInterval(fetchPending, POLL_INTERVAL_MS);
         return () => clearInterval(interval);
     }, [user]);
@@ -228,37 +264,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.push('/login');
     };
 
-    if (!user) return null; // Or a loading spinner
+    if (!user) return null;
 
     const userRole = user.role as string;
-    const allowedSidebarLinks = sidebarLinks.filter(
-        (link) => !link.roles || link.roles.includes(userRole)
-    );
+    const allowedSidebarLinks = flatLinks.filter(l => !l.roles || l.roles.includes(userRole));
+
+    // Find active page name
+    const activeFlatLink = allowedSidebarLinks.find(l => pathname.startsWith(l.href));
+    const activeGroupedLink = groupedMenus.flatMap(g => g.links).find(l => pathname.startsWith(l.href));
+    const activePageName = activeFlatLink?.name || activeGroupedLink?.name || 'Dashboard';
 
     return (
         <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
-            {/* Sidebar - lebar penuh di mobile, 64 di tablet/desktop */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] sm:w-64 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex-shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                    }`}
+                className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] sm:w-64 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex-shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <div className="h-full flex flex-col">
                     <div className="h-16 flex items-center px-6 border-b border-slate-800">
                         <div className="flex items-center gap-3">
-                            <Image
-                                src="/images/logo.jpg"
-                                alt="Logo GSP"
-                                width={80}
-                                height={80}
-                            />
-                            <span className="text-xl font-bold text-white tracking-tight">
-                                GSP Dashboard
-                            </span>
+                            <Image src="/images/logo.jpg" alt="Logo GSP" width={80} height={80} />
+                            <span className="text-xl font-bold text-white tracking-tight">GSP Dashboard</span>
                         </div>
-                        <button
-                            className="ml-auto md:hidden text-slate-400 hover:text-white"
-                            onClick={() => setSidebarOpen(false)}
-                        >
+                        <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
                             <X size={20} />
                         </button>
                     </div>
@@ -268,9 +295,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <div className="text-sm text-emerald-400 mt-1">{user.role}</div>
                     </div>
 
-                    <nav className="flex-1 overflow-y-auto py-4">
-                        <ul className="space-y-1 px-3">
-                            {allowedSidebarLinks.map((link) => {
+                    <nav className="flex-1 overflow-y-auto py-3">
+                        <ul className="space-y-0.5 px-3">
+                            {/* Dashboard link */}
+                            <li>
+                                <Link
+                                    href="/dashboard"
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === '/dashboard' ? 'bg-emerald-600/10 text-emerald-400 font-medium' : 'hover:bg-slate-800 hover:text-white'}`}
+                                >
+                                    <LayoutDashboard size={18} className={pathname === '/dashboard' ? 'text-emerald-400' : 'text-slate-400'} />
+                                    Dashboard
+                                </Link>
+                            </li>
+
+                            {/* Separator */}
+                            <li className="px-3 pt-3 pb-1">
+                                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Operasional</span>
+                            </li>
+
+                            {/* Flat links */}
+                            {allowedSidebarLinks.map(link => {
                                 const Icon = link.icon;
                                 const isActive = pathname.startsWith(link.href);
                                 const showBadge = link.notificationKey === 'screening' && pendingCount > 0;
@@ -278,10 +322,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <li key={link.name}>
                                         <Link
                                             href={link.href}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                                                ? 'bg-emerald-600/10 text-emerald-400 font-medium'
-                                                : 'hover:bg-slate-800 hover:text-white'
-                                                }`}
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-emerald-600/10 text-emerald-400 font-medium' : 'hover:bg-slate-800 hover:text-white'}`}
                                         >
                                             <div className="relative">
                                                 <Icon size={18} className={isActive ? 'text-emerald-400' : 'text-slate-400'} />
@@ -296,6 +337,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     </li>
                                 );
                             })}
+
+                            {/* Separator */}
+                            <li className="px-3 pt-3 pb-1">
+                                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Program</span>
+                            </li>
+
+                            {/* Grouped menus */}
+                            {groupedMenus.map(group => (
+                                <SidebarGroupMenu
+                                    key={group.groupName}
+                                    group={group}
+                                    pathname={pathname}
+                                    pendingCount={pendingCount}
+                                />
+                            ))}
                         </ul>
                     </nav>
 
@@ -311,29 +367,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex-1 flex flex-col min-w-0">
                 <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
                     <div className="flex items-center min-w-0">
-                        <button
-                            className="md:hidden mr-4 text-slate-600 hover:text-slate-900 flex-shrink-0"
-                            onClick={() => setSidebarOpen(true)}
-                        >
+                        <button className="md:hidden mr-4 text-slate-600 hover:text-slate-900 flex-shrink-0" onClick={() => setSidebarOpen(true)}>
                             <Menu size={24} />
                         </button>
-                        <div className="font-medium text-slate-800 truncate">
-                            {allowedSidebarLinks.find(link => pathname.startsWith(link.href))?.name || 'Dashboard'}
-                        </div>
+                        <div className="font-medium text-slate-800 truncate">{activePageName}</div>
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0">
-
                         <div className="relative" ref={profileRef}>
                             <button
-                                onClick={() => setProfileOpen((o) => !o)}
+                                onClick={() => setProfileOpen(o => !o)}
                                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                             >
                                 <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
                                     <User size={18} />
                                 </div>
-                                <span className="hidden md:inline text-sm font-medium text-slate-700 max-w-[120px] truncate">
-                                    {user?.name}
-                                </span>
+                                <span className="hidden md:inline text-sm font-medium text-slate-700 max-w-[120px] truncate">{user?.name}</span>
                                 <ChevronDown size={16} className="text-slate-500" />
                             </button>
                             {profileOpen && (
@@ -343,10 +391,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         <p className="text-sm text-slate-500 truncate">{user?.role}</p>
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            setProfileOpen(false);
-                                            handleLogout();
-                                        }}
+                                        onClick={() => { setProfileOpen(false); handleLogout(); }}
                                         className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50 transition-colors"
                                     >
                                         <LogOut size={16} />
