@@ -58,9 +58,7 @@ export default function LoginPage() {
 
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 sm:p-8 border border-slate-100 mx-auto">
                 <div className="text-center mb-6 sm:mb-8">
-                    <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center text-emerald-600 mx-auto mb-4">
-                        <UserPlus size={32} />
-                    </div>
+                    <img src="/images/logo.jpg" alt="Logo YBM PLN" width={200} height={200} className="rounded-md object-contain w-16 h-16 sm:w-[100px] sm:h-[100px]" />
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Login Sistem Pengelola</h1>
                     <p className="text-slate-500 text-sm sm:text-base mt-2">Masuk untuk mengelola data pasien dan operasional GSP YBM PLN.</p>
                 </div>

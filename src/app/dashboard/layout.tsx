@@ -31,6 +31,7 @@ import {
     Stethoscope,
     BookMarked,
     LayoutDashboard,
+    Camera,
 } from 'lucide-react';
 
 function HeaderClock({ className = '' }: { className?: string }) {
@@ -118,6 +119,7 @@ const groupedMenus: SidebarGroup[] = [
             { name: 'Jadwal Taklim', href: '/dashboard/kegiatan/taklim', icon: CalendarDays },
             { name: 'Kegiatan Harian', href: '/dashboard/kegiatan/harian', icon: ListChecks },
             { name: 'Presensi', href: '/dashboard/kegiatan/presensi', icon: ClipboardList },
+            { name: 'Dokumentasi', href: '/dashboard/kegiatan/dokumentasi', icon: Camera },
         ],
     },
     {
@@ -157,11 +159,10 @@ function SidebarGroupMenu({
         <li>
             <button
                 onClick={() => setOpen(o => !o)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-                    isGroupActive ? 'text-emerald-400 font-medium' : 'hover:bg-slate-800 hover:text-white'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${isGroupActive ? 'text-white font-semibold bg-white/10' : 'hover:bg-white/10 hover:text-white'
+                    }`}
             >
-                <Icon size={18} className={isGroupActive ? 'text-emerald-400' : 'text-slate-400'} />
+                <Icon size={18} className={isGroupActive ? 'text-white' : 'text-white/70'} />
                 <span className="flex-1 text-sm">{group.groupName}</span>
                 <ChevronDown
                     size={14}
@@ -177,13 +178,12 @@ function SidebarGroupMenu({
                             <li key={link.href}>
                                 <Link
                                     href={link.href}
-                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-sm ${
-                                        isActive
-                                            ? 'bg-emerald-600/10 text-emerald-400 font-medium'
-                                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                    }`}
+                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-sm ${isActive
+                                            ? 'bg-white/20 text-white font-semibold'
+                                            : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                        }`}
                                 >
-                                    <LinkIcon size={15} className={isActive ? 'text-emerald-400' : 'text-slate-500'} />
+                                    <LinkIcon size={15} className={isActive ? 'text-white' : 'text-white/60'} />
                                     {link.name}
                                 </Link>
                             </li>
@@ -227,7 +227,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const role = user.role as string;
         const accessibleMenus = user.accessible_menus || [];
         const isAdmin = role === 'Admin YBM';
-        
+
         const hasAccess = (href: string) => isAdmin || accessibleMenus.includes(href);
 
         const allowedFlat = flatLinks.filter(l => hasAccess(l.href));
@@ -237,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (!pathname.startsWith('/dashboard')) return;
         // Dashboard root is always allowed
         if (pathname === '/dashboard') return;
-        
+
         const isAllowed = allAllowed.some(l => pathname.startsWith(l.href));
         if (!isAllowed && allowedFlat.length > 0) {
             // For grouped paths, allow them if they have access
@@ -290,22 +290,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
         <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] sm:w-64 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex-shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] sm:w-64 bg-[#009bb9] text-white transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex-shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <div className="h-full flex flex-col">
-                    <div className="h-16 flex items-center px-6 border-b border-slate-800">
+                    <div className="h-16 flex items-center px-6 border-b border-white/10">
                         <div className="flex items-center gap-3">
-                            <Image src="/images/logo.jpg" alt="Logo GSP" width={80} height={80} />
+                            <Image src="/images/logo.jpg" alt="Logo GSP" width={80} height={80} className="rounded-lg" />
                             <span className="text-xl font-bold text-white tracking-tight">GSP Dashboard</span>
                         </div>
-                        <button className="ml-auto md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
+                        <button className="ml-auto md:hidden text-white/70 hover:text-white" onClick={() => setSidebarOpen(false)}>
                             <X size={20} />
                         </button>
                     </div>
 
-                    <div className="p-4 border-b border-slate-800">
-                        <div className="font-medium text-slate-100">{user.name}</div>
-                        <div className="text-sm text-emerald-400 mt-1">{user.role}</div>
+                    <div className="p-4 border-b border-white/10">
+                        <div className="font-medium text-white">{user.name}</div>
+                        <div className="text-sm text-white/70 mt-1">{user.role}</div>
                     </div>
 
                     <nav className="flex-1 overflow-y-auto py-3">
@@ -314,16 +314,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <li>
                                 <Link
                                     href="/dashboard"
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === '/dashboard' ? 'bg-emerald-600/10 text-emerald-400 font-medium' : 'hover:bg-slate-800 hover:text-white'}`}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname === '/dashboard' ? 'bg-white/20 text-white font-semibold' : 'hover:bg-white/10 hover:text-white'}`}
                                 >
-                                    <LayoutDashboard size={18} className={pathname === '/dashboard' ? 'text-emerald-400' : 'text-slate-400'} />
+                                    <LayoutDashboard size={18} className={pathname === '/dashboard' ? 'text-white' : 'text-white/70'} />
                                     Dashboard
                                 </Link>
                             </li>
 
                             {/* Separator */}
                             <li className="px-3 pt-3 pb-1">
-                                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Operasional</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-white/50">Operasional</span>
                             </li>
 
                             {/* Flat links */}
@@ -335,10 +335,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <li key={link.name}>
                                         <Link
                                             href={link.href}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-emerald-600/10 text-emerald-400 font-medium' : 'hover:bg-slate-800 hover:text-white'}`}
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-white/20 text-white font-semibold' : 'hover:bg-white/10 hover:text-white'}`}
                                         >
                                             <div className="relative">
-                                                <Icon size={18} className={isActive ? 'text-emerald-400' : 'text-slate-400'} />
+                                                <Icon size={18} className={isActive ? 'text-white' : 'text-white/70'} />
                                                 {showBadge && (
                                                     <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
                                                         {pendingCount > 99 ? '99+' : pendingCount}
@@ -353,7 +353,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                             {/* Separator */}
                             <li className="px-3 pt-3 pb-1">
-                                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Program</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-white/50">Program</span>
                             </li>
 
                             {/* Grouped menus */}
@@ -368,7 +368,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </ul>
                     </nav>
 
-                    <div className="p-4 border-t border-slate-800">
+                    <div className="p-4 border-t border-white/10">
                         <div className="flex items-center gap-3 px-5 py-2">
                             <HeaderClock className="text-white text-xl" />
                         </div>

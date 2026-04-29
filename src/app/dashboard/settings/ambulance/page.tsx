@@ -98,7 +98,7 @@ export default function AmbulanceSettingsPage() {
                 (activeModal.mode === 'edit' ? `/${activeModal.id}` : '');
             const method = activeModal.mode === 'create' ? 'POST' : 'PUT';
 
-            const res = await fetch(url, {
+            const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(ambulanceForm)

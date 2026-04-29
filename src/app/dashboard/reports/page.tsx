@@ -264,7 +264,9 @@ export default function ReportsPage() {
                                 <> - {startDate === endDate
                                     ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
                                     : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
-                            ) : ' - Semua data'}
+                            ) : (
+                                <span> - Semua data</span>
+                            )}
                         </h2>
                     </div>
                     <Button
@@ -348,10 +350,14 @@ export default function ReportsPage() {
                     <div className="flex items-center gap-2">
                         <Ambulance size={20} className="text-emerald-600" />
                         <h2 className="font-bold text-slate-800">
-                            Laporan Penggunaan Ambulans -{' '}
-                            {startDate === endDate
-                                ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                                : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                            Laporan Penggunaan Ambulans
+                            {startDate && endDate ? (
+                                <> - {startDate === endDate
+                                    ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                    : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
+                            ) : (
+                                <span> - Semua data</span>
+                            )}
                         </h2>
                     </div>
                     <Button

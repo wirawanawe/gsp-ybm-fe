@@ -131,7 +131,7 @@ export default function RoomSettingsPage() {
                 capacity: Number(roomForm.capacity)
             };
 
-            const res = await fetch(url, {
+            const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

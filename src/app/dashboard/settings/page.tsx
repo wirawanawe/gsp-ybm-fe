@@ -1,6 +1,6 @@
 'use client';
 
-import { Wrench, Ambulance, UserCog, BedSingle, Shield, ChevronRight } from 'lucide-react';
+import { Wrench, Ambulance, UserCog, BedSingle, Shield, ChevronRight, Camera } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SettingsPage() {
@@ -98,7 +98,27 @@ export default function SettingsPage() {
                         Akses Menu <ChevronRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
                     </div>
                 </Link>
+                <Link 
+                    href="/dashboard/settings/hero"
+                    className="border border-slate-200 rounded-xl p-5 bg-slate-50/80 hover:bg-rose-50/50 hover:border-rose-300 transition-colors group cursor-pointer h-full flex flex-col"
+                >
+                    <div className="flex items-center gap-3 mb-4 flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                            <Camera size={22} />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-slate-800 group-hover:text-rose-700 transition-colors">Setting Slider Hero</h2>
+                            <p className="text-xs text-slate-500">
+                                Konten slider gambar di halaman depan.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center text-rose-600 text-sm font-medium mt-auto group-hover:underline">
+                        Akses Menu <ChevronRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
+                    </div>
+                </Link>
             </div>
+
         </div>
     );
 }

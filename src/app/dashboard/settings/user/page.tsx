@@ -122,7 +122,7 @@ export default function UserSettingsPage() {
                 delete (body as any).password;
             }
 
-            const res = await fetch(url, {
+            const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

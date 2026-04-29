@@ -35,9 +35,13 @@ export default function AmbulancePage() {
     const [formState, setFormState] = useState<{
         ambulance_id: string;
         patient_id: string;
+        km_start: string;
+        driver_name: string;
     }>({
         ambulance_id: '',
-        patient_id: ''
+        patient_id: '',
+        km_start: '',
+        driver_name: ''
     });
     const [patients, setPatients] = useState<{ id: number; name: string; registration_number: string }[]>([]);
     const [patientSearch, setPatientSearch] = useState('');
@@ -50,6 +54,8 @@ export default function AmbulancePage() {
     const [isCompleteOpen, setIsCompleteOpen] = useState(false);
     const [completeLogId, setCompleteLogId] = useState<number | null>(null);
     const [returnTime, setReturnTime] = useState('');
+    const [kmEnd, setKmEnd] = useState('');
+    const [fuelCost, setFuelCost] = useState('');
     const [isCompleting, setIsCompleting] = useState(false);
 
     const fetchData = async () => {
@@ -90,7 +96,7 @@ export default function AmbulancePage() {
 
     const openBookingModal = () => {
         fetchPatients();
-        setFormState({ ambulance_id: '', patient_id: '' });
+        setFormState({ ambulance_id: '', patient_id: '', km_start: '', driver_name: '' });
         setPatientSearch('');
         setSelectedPatientIds([]);
         setPatientDestinations({});
@@ -111,6 +117,8 @@ export default function AmbulancePage() {
 
     const openCompleteModal = (logId: number) => {
         setCompleteLogId(logId);
+        setKmEnd('');
+        setFuelCost('');
         // Default jam pulang saat ini format datetime-local
         const now = new Date();
         const year = now.getFullYear();
@@ -190,6 +198,8 @@ export default function AmbulancePage() {
                     }
                 });
                 if (departureTime) fd.append('departure_time', departureTime);
+                fd.append('km_start', formState.km_start || '0');
+                fd.append('driver_name', formState.driver_name || '');
 
                 res = await authFetch(apiUrl('/api/ambulance/logs'), {
                     method: 'POST',
@@ -205,7 +215,9 @@ export default function AmbulancePage() {
                         patient_id: ids[0] ? Number(ids[0]) : null,
                         patient_ids: ids.map(id => Number(id)),
                         patient_destinations,
-                        departure_time: departureTime || null
+                        departure_time: departureTime || null,
+                        km_start: Number(formState.km_start) || 0,
+                        driver_name: formState.driver_name || null
                     })
                 });
             }
@@ -215,7 +227,7 @@ export default function AmbulancePage() {
                 throw new Error(data.message || 'Gagal membuat booking ambulans');
             }
             setIsBookingOpen(false);
-            setFormState({ ambulance_id: '', patient_id: '' });
+            setFormState({ ambulance_id: '', patient_id: '', km_start: '', driver_name: '' });
             setSelectedPatientIds([]);
             setPatientDestinations({});
             setPatientDocuments({});
@@ -234,12 +246,16 @@ export default function AmbulancePage() {
 
         setIsCompleting(true);
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 apiUrl(`/api/ambulance/logs/${completeLogId}/complete`),
                 {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ return_time: returnTime || null })
+                    body: JSON.stringify({ 
+                        return_time: returnTime || null,
+                        km_end: Number(kmEnd) || 0,
+                        fuel_cost: Number(fuelCost) || 0
+                    })
                 }
             );
             const data = await res.json();
@@ -315,6 +331,33 @@ export default function AmbulancePage() {
                                             </option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            Nama Driver
+                                        </label>
+                                        <Input
+                                            required
+                                            placeholder="Nama driver..."
+                                            value={formState.driver_name}
+                                            onChange={e => setFormState(prev => ({ ...prev, driver_name: e.target.value }))}
+                                            className="h-10 text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            KM Awal
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            required
+                                            placeholder="0"
+                                            value={formState.km_start}
+                                            onChange={e => setFormState(prev => ({ ...prev, km_start: e.target.value }))}
+                                            className="h-10 text-sm"
+                                        />
+                                    </div>
                                 </div>
                                 {/* Tujuan sekarang diisi per pasien, bukan tujuan umum */}
                                 <div>
@@ -473,6 +516,34 @@ export default function AmbulancePage() {
                                     value={returnTime}
                                     onChange={e => setReturnTime(e.target.value)}
                                 />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        KM Akhir
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        required
+                                        placeholder="0"
+                                        value={kmEnd}
+                                        onChange={e => setKmEnd(e.target.value)}
+                                        className="h-10 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Biaya BBM (Rp)
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        required
+                                        placeholder="0"
+                                        value={fuelCost}
+                                        onChange={e => setFuelCost(e.target.value)}
+                                        className="h-10 text-sm"
+                                    />
+                                </div>
                             </div>
                             <div className="pt-4 flex justify-end gap-3">
                                 <Button

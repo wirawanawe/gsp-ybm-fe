@@ -291,19 +291,6 @@ function ScheduleWidget({ schedules, loading }: { schedules: any[]; loading: boo
     );
 }
 
-// ─── Quick Menus ────────────────────────────────────────────────────────────────
-
-const quickMenus = [
-    { label: 'Jadwal Tahsin', href: '/dashboard/kegiatan/tahsin', icon: BookOpen, color: 'bg-emerald-100 text-emerald-700' },
-    { label: 'Jadwal Taklim', href: '/dashboard/kegiatan/taklim', icon: BookOpen, color: 'bg-teal-100 text-teal-700' },
-    { label: 'Kegiatan Harian', href: '/dashboard/kegiatan/harian', icon: Activity, color: 'bg-blue-100 text-blue-700' },
-    { label: 'Presensi', href: '/dashboard/kegiatan/presensi', icon: CheckCircle2, color: 'bg-violet-100 text-violet-700' },
-    { label: 'Pencatatan Tensi', href: '/dashboard/kesehatan/tensi', icon: HeartPulse, color: 'bg-rose-100 text-rose-700' },
-    { label: 'Kondisi Pasien', href: '/dashboard/kesehatan/kondisi', icon: Activity, color: 'bg-orange-100 text-orange-700' },
-    { label: 'Dana Masuk', href: '/dashboard/keuangan/pemasukan', icon: TrendingUp, color: 'bg-green-100 text-green-700' },
-    { label: 'Pengeluaran', href: '/dashboard/keuangan/pengeluaran', icon: Wallet, color: 'bg-amber-100 text-amber-700' },
-];
-
 export default function DashboardPage() {
     const [summary, setSummary] = useState<any>(null);
     const [schedules, setSchedules] = useState<any[]>([]);
@@ -367,7 +354,6 @@ export default function DashboardPage() {
                         subtitle="Sedang dirawat di rumah singgah"
                         icon={Users}
                         color="text-emerald-600"
-                        href="/dashboard/patients"
                     />
                     <StatCard
                         title="Total Pasien Terdaftar"
@@ -375,7 +361,6 @@ export default function DashboardPage() {
                         subtitle="Semua riwayat pasien"
                         icon={Users}
                         color="text-blue-600"
-                        href="/dashboard/patients"
                     />
                     <StatCard
                         title="Menunggu Verifikasi"
@@ -383,7 +368,6 @@ export default function DashboardPage() {
                         subtitle="Perlu tindakan segera"
                         icon={AlertCircle}
                         color="text-amber-600"
-                        href="/dashboard/screening"
                     />
                 </div>
             </div>
@@ -397,29 +381,6 @@ export default function DashboardPage() {
                     <ScheduleWidget schedules={schedules} loading={loadingSchedules} />
                 </div>
             </div>
-
-            {/* Quick Access */}
-            <div>
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Akses Cepat</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {quickMenus.map(m => {
-                        const Icon = m.icon;
-                        return (
-                            <Link
-                                key={m.href}
-                                href={m.href}
-                                className="bg-white border border-slate-100 rounded-xl p-4 flex flex-col items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
-                            >
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${m.color}`}>
-                                    <Icon size={20} />
-                                </div>
-                                <span className="text-xs font-medium text-slate-700 text-center">{m.label}</span>
-                            </Link>
-                        );
-                    })}
-                </div>
-            </div>
         </div>
     );
 }
-
