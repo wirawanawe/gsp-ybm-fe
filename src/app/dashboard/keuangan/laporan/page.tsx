@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiUrl, authFetch } from '@/lib/api';
 import { PieChart, TrendingUp, TrendingDown, Minus, Download, ChevronDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
@@ -39,6 +40,50 @@ export default function LaporanKeuanganPage() {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
+    const handleDownloadExcel = () => {
+        if (!report || !report.transactions) return;
+        
+        // Ensure transactions are sorted chronologically ascending for running balance
+        const sortedTrx = [...report.transactions].reverse();
+        
+        let cumulativeSaldo = 0;
+        const exportData = sortedTrx.map((t: any, idx: number) => {
+            const isIncome = t.type === 'income';
+            const incomeAmt = isIncome ? Number(t.amount) : 0;
+            const expenseAmt = !isIncome ? Number(t.amount) : 0;
+            cumulativeSaldo = cumulativeSaldo + incomeAmt - expenseAmt;
+            
+            return {
+                "No": idx + 1,
+                "Tanggal": t.trx_date ? new Date(t.trx_date).toLocaleDateString('id-ID') : '',
+                "Uraian": t.description || '',
+                "Dana Masuk": incomeAmt,
+                "Dana Keluar": expenseAmt,
+                "Saldo": cumulativeSaldo,
+                "Sumber Dana": isIncome ? (t.category || '') : '',
+                "Penanggung jawab": t.person_in_charge || '',
+                "Keterangan": t.receipt_number ? `Kwitansi: ${t.receipt_number}` : ''
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan Keuangan");
+        
+        // Set column widths
+        ws['!cols'] = [
+            { wch: 5 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, 
+            { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
+        ];
+
+        let fileName = "Laporan_Keuangan";
+        if (period === 'monthly') fileName += `_${MONTHS[month-1]}_${year}`;
+        else if (period === 'yearly') fileName += `_${year}`;
+        else fileName += `_Custom`;
+
+        XLSX.writeFile(wb, `${fileName}.xlsx`);
+    };
+
     return (
         <div className="space-y-5">
             <div className="flex items-center justify-between">
@@ -48,6 +93,11 @@ export default function LaporanKeuanganPage() {
                     </h1>
                     <p className="text-sm text-slate-500 mt-0.5">Ringkasan keuangan otomatis per periode</p>
                 </div>
+                {report && (
+                    <button onClick={handleDownloadExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
+                        <Download size={16} /> Export Excel
+                    </button>
+                )}
             </div>
 
             {/* Period Selector */}
@@ -204,6 +254,7 @@ export default function LaporanKeuanganPage() {
                                                 <td className="px-4 py-3 text-slate-800">{t.description}</td>
                                                 <td className="px-4 py-3">
                                                     <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">{t.category}</span>
+                                                    {t.person_in_charge && <div className="text-[10px] text-slate-400 mt-1 max-w-[100px] truncate">PIC: {t.person_in_charge}</div>}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>

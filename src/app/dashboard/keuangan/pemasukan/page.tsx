@@ -8,7 +8,7 @@ const CATEGORIES = ['Donasi', 'Infaq', 'Zakat', 'Wakaf', 'Dana YBM', 'Lainnya'];
 
 const emptyForm = {
     income_date: new Date().toISOString().slice(0, 10),
-    source: '', category: 'Donasi', amount: '', description: '', receipt_number: '',
+    source: '', category: 'Donasi', amount: '', description: '', receipt_number: '', person_in_charge: '',
 };
 
 const fmtCurrency = (n: number) =>
@@ -59,6 +59,7 @@ export default function PemasukanPage() {
             source: r.source || '', category: r.category || 'Lainnya',
             amount: r.amount || '', description: r.description || '',
             receipt_number: r.receipt_number || '',
+            person_in_charge: r.person_in_charge || '',
         });
         setShowModal(true);
     };
@@ -134,8 +135,8 @@ export default function PemasukanPage() {
                                 <th className="text-left px-5 py-3.5 text-slate-600 font-semibold">Tanggal</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Sumber</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Kategori</th>
-                                <th className="text-right px-4 py-3.5 text-slate-600 font-semibold">Jumlah</th>
-                                <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">No. Kwitansi</th>
+                                <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Jumlah</th>
+                                <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">PIC (Kwitansi)</th>
                                 <th className="px-4 py-3.5"></th>
                             </tr>
                         </thead>
@@ -151,7 +152,10 @@ export default function PemasukanPage() {
                                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${CATEGORY_COLORS[r.category] || CATEGORY_COLORS['Lainnya']}`}>{r.category}</span>
                                     </td>
                                     <td className="px-4 py-3.5 text-right font-semibold text-green-700">{fmtCurrency(Number(r.amount))}</td>
-                                    <td className="px-4 py-3.5 text-slate-500 text-xs">{r.receipt_number || '—'}</td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="font-medium text-slate-800 text-xs">{r.person_in_charge || '—'}</div>
+                                        <div className="text-[10px] text-slate-500">{r.receipt_number || '—'}</div>
+                                    </td>
                                     <td className="px-4 py-3.5">
                                         <div className="flex gap-1">
                                             <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"><Pencil size={14} /></button>
@@ -204,6 +208,10 @@ export default function PemasukanPage() {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Keterangan</label>
                                 <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Penanggung Jawab</label>
+                                <input value={form.person_in_charge} onChange={e => setForm(f => ({ ...f, person_in_charge: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Opsional" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Nomor Kwitansi</label>

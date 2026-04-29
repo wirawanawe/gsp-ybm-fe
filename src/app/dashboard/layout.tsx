@@ -225,18 +225,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     useEffect(() => {
         if (!user) return;
         const role = user.role as string;
-        const allowedFlat = flatLinks.filter(l => !l.roles || l.roles.includes(role));
-        // Semua grouped menu tersedia untuk semua role
-        const allGroupedLinks = groupedMenus.flatMap(g => g.links);
+        const accessibleMenus = user.accessible_menus || [];
+        const isAdmin = role === 'Admin YBM';
+        
+        const hasAccess = (href: string) => isAdmin || accessibleMenus.includes(href);
+
+        const allowedFlat = flatLinks.filter(l => hasAccess(l.href));
+        const allGroupedLinks = groupedMenus.flatMap(g => g.links).filter(l => hasAccess(l.href));
         const allAllowed = [...allowedFlat, ...allGroupedLinks];
 
         if (!pathname.startsWith('/dashboard')) return;
         // Dashboard root is always allowed
         if (pathname === '/dashboard') return;
+        
         const isAllowed = allAllowed.some(l => pathname.startsWith(l.href));
         if (!isAllowed && allowedFlat.length > 0) {
-            // For grouped paths, allow them
-            const isGroupedPath = groupedMenus.some(g => g.links.some(l => pathname.startsWith(l.href)));
+            // For grouped paths, allow them if they have access
+            const isGroupedPath = allGroupedLinks.some(l => pathname.startsWith(l.href));
             if (!isGroupedPath) router.replace(allowedFlat[0].href);
         }
     }, [user, pathname, router]);
@@ -267,11 +272,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!user) return null;
 
     const userRole = user.role as string;
-    const allowedSidebarLinks = flatLinks.filter(l => !l.roles || l.roles.includes(userRole));
+    const accessibleMenus = user.accessible_menus || [];
+    const isAdmin = userRole === 'Admin YBM';
+    const hasAccess = (href: string) => isAdmin || accessibleMenus.includes(href);
+
+    const allowedSidebarLinks = flatLinks.filter(l => hasAccess(l.href));
+    const allowedGroupedMenus = groupedMenus.map(g => ({
+        ...g,
+        links: g.links.filter(l => hasAccess(l.href))
+    })).filter(g => g.links.length > 0);
 
     // Find active page name
     const activeFlatLink = allowedSidebarLinks.find(l => pathname.startsWith(l.href));
-    const activeGroupedLink = groupedMenus.flatMap(g => g.links).find(l => pathname.startsWith(l.href));
+    const activeGroupedLink = allowedGroupedMenus.flatMap(g => g.links).find(l => pathname.startsWith(l.href));
     const activePageName = activeFlatLink?.name || activeGroupedLink?.name || 'Dashboard';
 
     return (
@@ -344,7 +357,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </li>
 
                             {/* Grouped menus */}
-                            {groupedMenus.map(group => (
+                            {allowedGroupedMenus.map(group => (
                                 <SidebarGroupMenu
                                     key={group.groupName}
                                     group={group}

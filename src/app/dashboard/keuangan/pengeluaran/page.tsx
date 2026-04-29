@@ -10,7 +10,7 @@ const PAYMENT_METHODS = ['Tunai', 'Transfer', 'Lainnya'];
 const emptyForm = {
     expense_date: new Date().toISOString().slice(0, 10),
     category: 'Operasional', description: '', amount: '',
-    payment_method: 'Tunai', receipt_number: '',
+    payment_method: 'Tunai', receipt_number: '', person_in_charge: '',
 };
 
 const fmtCurrency = (n: number) =>
@@ -62,7 +62,7 @@ export default function PengeluaranPage() {
             expense_date: r.expense_date ? r.expense_date.slice(0, 10) : '',
             category: r.category || 'Operasional', description: r.description || '',
             amount: r.amount || '', payment_method: r.payment_method || 'Tunai',
-            receipt_number: r.receipt_number || '',
+            receipt_number: r.receipt_number || '', person_in_charge: r.person_in_charge || '',
         });
         setShowModal(true);
     };
@@ -159,7 +159,8 @@ export default function PengeluaranPage() {
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Keterangan</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Kategori</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Metode</th>
-                                <th className="text-right px-4 py-3.5 text-slate-600 font-semibold">Jumlah</th>
+                                <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Jumlah</th>
+                                <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">PIC (Kwitansi)</th>
                                 <th className="px-4 py-3.5"></th>
                             </tr>
                         </thead>
@@ -169,13 +170,16 @@ export default function PengeluaranPage() {
                                     <td className="px-5 py-3.5 text-slate-600">{fmtDate(r.expense_date)}</td>
                                     <td className="px-4 py-3.5">
                                         <div className="font-medium text-slate-800">{r.description}</div>
-                                        {r.receipt_number && <div className="text-xs text-slate-400 mt-0.5">#{r.receipt_number}</div>}
                                     </td>
                                     <td className="px-4 py-3.5">
                                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${CAT_COLORS[r.category] || CAT_COLORS['Lainnya']}`}>{r.category}</span>
                                     </td>
                                     <td className="px-4 py-3.5 text-slate-500 text-xs">{r.payment_method}</td>
                                     <td className="px-4 py-3.5 text-right font-semibold text-amber-700">{fmtCurrency(Number(r.amount))}</td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="font-medium text-slate-800 text-xs">{r.person_in_charge || '—'}</div>
+                                        <div className="text-[10px] text-slate-500">{r.receipt_number ? '#' + r.receipt_number : '—'}</div>
+                                    </td>
                                     <td className="px-4 py-3.5">
                                         <div className="flex gap-1">
                                             <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"><Pencil size={14} /></button>
@@ -231,6 +235,10 @@ export default function PengeluaranPage() {
                                         {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Penanggung Jawab</label>
+                                <input value={form.person_in_charge} onChange={e => setForm(f => ({ ...f, person_in_charge: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Opsional" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Nomor Kwitansi</label>
