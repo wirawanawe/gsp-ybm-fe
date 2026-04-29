@@ -58,7 +58,7 @@ export default function LoginPage() {
 
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 sm:p-8 border border-slate-100 mx-auto">
                 <div className="text-center mb-6 sm:mb-8">
-                    <img src="/images/logo.jpg" alt="Logo YBM PLN" width={200} height={200} className="rounded-md object-contain w-16 h-16 sm:w-[100px] sm:h-[100px]" />
+                    <img src="/images/logo.jpg" alt="Logo YBM PLN" width={200} height={200} className="rounded-md object-contain w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-4" />
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Login Sistem Pengelola</h1>
                     <p className="text-slate-500 text-sm sm:text-base mt-2">Masuk untuk mengelola data pasien dan operasional GSP YBM PLN.</p>
                 </div>
@@ -86,7 +86,6 @@ export default function LoginPage() {
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
-                            <Link href="#" className="text-sm font-medium text-emerald-600 hover:text-emerald-700">Lupa password?</Link>
                         </div>
                         <Input
                             id="password"
@@ -116,7 +115,7 @@ export default function LoginPage() {
                 </form>
 
                 <div className="mt-8 text-center text-sm text-slate-500">
-                    <p>Jika Anda tidak memiliki akun, harap rincikan ke Administrator YBM.</p>
+                    <p>Jika Anda tidak memiliki akun atau lupa password, harap laporkan ke Administrator YBM.</p>
                 </div>
             </div>
         </div>
