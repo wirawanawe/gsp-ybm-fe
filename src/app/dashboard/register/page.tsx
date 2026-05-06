@@ -34,7 +34,8 @@ export default function DashboardRegisterPatientPage() {
         age: '',
         age_category: '',
         education: '',
-        disease_category: ''
+        disease_category: '',
+        rs_rujukan: ''
     });
 
     const [files, setFiles] = useState<{ [key: string]: File | null }>({
@@ -188,7 +189,8 @@ export default function DashboardRegisterPatientPage() {
                     age: data.age || '',
                     age_category: data.age_category || '',
                     education: data.education || '',
-                    disease_category: data.disease_category || ''
+                    disease_category: data.disease_category || '',
+                    rs_rujukan: data.rs_rujukan || ''
                 });
                 setDataFromExisting(true);
                 setExistingPatientId(data.id);
@@ -769,6 +771,16 @@ export default function DashboardRegisterPatientPage() {
                                     />
                                 </div>
                                 <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="rs_rujukan">RS Rujukan / Asal Faskes</Label>
+                                    <Input
+                                        id="rs_rujukan"
+                                        name="rs_rujukan"
+                                        value={formData.rs_rujukan}
+                                        onChange={handleInputChange}
+                                        placeholder="Contoh: RSUD dr. Soetomo, Puskesmas X"
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
                                     <Label htmlFor="diagnosis">Diagnosa Penyakit</Label>
                                     <Input
                                         id="diagnosis"
@@ -1036,7 +1048,8 @@ export default function DashboardRegisterPatientPage() {
                                         age: '',
                                         age_category: '',
                                         education: '',
-                                        disease_category: ''
+                                        disease_category: '',
+                                        rs_rujukan: ''
                                     });
                                     setFiles({
                                         ktp: null,

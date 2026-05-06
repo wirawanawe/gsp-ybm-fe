@@ -36,6 +36,7 @@ type Patient = {
     age?: string | number | null;
     education?: string | null;
     disease_category?: string | null;
+    rs_rujukan?: string | null;
 };
 
 type Doc = { id: number; document_type: string; file_path: string };
@@ -75,6 +76,7 @@ export default function PatientsPage() {
         age: string;
         education: string;
         disease_category: string;
+        rs_rujukan: string;
     }>({
         name: '',
         nik: '',
@@ -94,7 +96,8 @@ export default function PatientsPage() {
         age_category: '',
         age: '',
         education: '',
-        disease_category: ''
+        disease_category: '',
+        rs_rujukan: ''
     });
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState('');
@@ -208,7 +211,8 @@ export default function PatientsPage() {
             age_category: p.age_category || '',
             age: p.age ? String(p.age) : '',
             education: p.education || '',
-            disease_category: p.disease_category || ''
+            disease_category: p.disease_category || '',
+            rs_rujukan: p.rs_rujukan || ''
         });
         setEditError('');
     };
@@ -628,6 +632,15 @@ export default function PatientsPage() {
                                         value={editForm.provinsi}
                                         onChange={e => setEditForm({ ...editForm, provinsi: e.target.value })}
                                         className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-xs text-slate-500">RS Rujukan / Asal Faskes</label>
+                                    <Input
+                                        value={editForm.rs_rujukan}
+                                        onChange={e => setEditForm({ ...editForm, rs_rujukan: e.target.value })}
+                                        className="h-9"
+                                        placeholder="Contoh: RSUD dr. Soetomo, dll."
                                     />
                                 </div>
                                 <div className="space-y-1 sm:col-span-2">
