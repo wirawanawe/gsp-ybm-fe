@@ -15,7 +15,7 @@ const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
 const fmtDate = (d: string) =>
-    d ? new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 const CATEGORY_COLORS: Record<string, string> = {
     Donasi: 'bg-emerald-100 text-emerald-700',

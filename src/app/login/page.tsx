@@ -41,7 +41,7 @@ export default function LoginPage() {
             localStorage.setItem('user', JSON.stringify(data.user));
 
             // Redirect to dashboard
-            router.push('/dashboard/screening');
+            router.push('/dashboard');
         } catch (err: any) {
             setErrorMsg(err.message);
         } finally {

@@ -37,11 +37,15 @@ export default function AmbulancePage() {
         patient_id: string;
         km_start: string;
         driver_name: string;
+        fuel_condition: string;
+        fuel_filled: string;
     }>({
         ambulance_id: '',
         patient_id: '',
         km_start: '',
-        driver_name: ''
+        driver_name: '',
+        fuel_condition: '',
+        fuel_filled: ''
     });
     const [patients, setPatients] = useState<{ id: number; name: string; registration_number: string }[]>([]);
     const [patientSearch, setPatientSearch] = useState('');
@@ -96,7 +100,7 @@ export default function AmbulancePage() {
 
     const openBookingModal = () => {
         fetchPatients();
-        setFormState({ ambulance_id: '', patient_id: '', km_start: '', driver_name: '' });
+        setFormState({ ambulance_id: '', patient_id: '', km_start: '', driver_name: '', fuel_condition: '', fuel_filled: '' });
         setPatientSearch('');
         setSelectedPatientIds([]);
         setPatientDestinations({});
@@ -200,6 +204,8 @@ export default function AmbulancePage() {
                 if (departureTime) fd.append('departure_time', departureTime);
                 fd.append('km_start', formState.km_start || '0');
                 fd.append('driver_name', formState.driver_name || '');
+                fd.append('fuel_condition', formState.fuel_condition || '');
+                fd.append('fuel_filled', formState.fuel_filled || '');
 
                 res = await authFetch(apiUrl('/api/ambulance/logs'), {
                     method: 'POST',
@@ -217,7 +223,9 @@ export default function AmbulancePage() {
                         patient_destinations,
                         departure_time: departureTime || null,
                         km_start: Number(formState.km_start) || 0,
-                        driver_name: formState.driver_name || null
+                        driver_name: formState.driver_name || null,
+                        fuel_condition: formState.fuel_condition || null,
+                        fuel_filled: formState.fuel_filled || null
                     })
                 });
             }
@@ -227,7 +235,7 @@ export default function AmbulancePage() {
                 throw new Error(data.message || 'Gagal membuat booking ambulans');
             }
             setIsBookingOpen(false);
-            setFormState({ ambulance_id: '', patient_id: '', km_start: '', driver_name: '' });
+            setFormState({ ambulance_id: '', patient_id: '', km_start: '', driver_name: '', fuel_condition: '', fuel_filled: '' });
             setSelectedPatientIds([]);
             setPatientDestinations({});
             setPatientDocuments({});
@@ -355,6 +363,35 @@ export default function AmbulancePage() {
                                             placeholder="0"
                                             value={formState.km_start}
                                             onChange={e => setFormState(prev => ({ ...prev, km_start: e.target.value }))}
+                                            className="h-10 text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            Kondisi BBM
+                                        </label>
+                                        <select
+                                            className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                            value={formState.fuel_condition}
+                                            onChange={e => setFormState(prev => ({ ...prev, fuel_condition: e.target.value }))}
+                                            required
+                                        >
+                                            <option value="">-- Kondisi BBM --</option>
+                                            <option value="Full">Full</option>
+                                            <option value="3/4">3/4</option>
+                                            <option value="1/2">1/2</option>
+                                            <option value="1/4">1/4</option>
+                                            <option value="Empty / E">Empty / E</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            Isi BBM (Opsional)
+                                        </label>
+                                        <Input
+                                            placeholder="Cth: Rp 150.000 / 10 L"
+                                            value={formState.fuel_filled}
+                                            onChange={e => setFormState(prev => ({ ...prev, fuel_filled: e.target.value }))}
                                             className="h-10 text-sm"
                                         />
                                     </div>
@@ -533,11 +570,10 @@ export default function AmbulancePage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1">
-                                        Biaya BBM (Rp)
+                                        Biaya BBM (Rp) (Opsional)
                                     </label>
                                     <Input
                                         type="number"
-                                        required
                                         placeholder="0"
                                         value={fuelCost}
                                         onChange={e => setFuelCost(e.target.value)}

@@ -30,7 +30,10 @@ export default function DashboardRegisterPatientPage() {
         diagnosis: '',
         treatment_plan: '',
         occupation: '',
-        income: ''
+        income: '',
+        age_category: '',
+        education: '',
+        disease_category: ''
     });
 
     const [files, setFiles] = useState<{ [key: string]: File | null }>({
@@ -47,7 +50,12 @@ export default function DashboardRegisterPatientPage() {
     const [existingPatientId, setExistingPatientId] = useState<number | null>(null);
     const [existingDocuments, setExistingDocuments] = useState<{ id: number; document_type: string; file_path: string }[]>([]);
     const [registrationType, setRegistrationType] = useState<'pasien' | 'penunggu'>('pasien');
-    const [penungguForm, setPenungguForm] = useState({ patient_id: '', name: '', nik: '', phone: '', relation: '' });
+    const [penungguForm, setPenungguForm] = useState({ 
+        patient_id: '', name: '', nik: '', phone: '', relation: '',
+        gender: 'Laki-laki', dob: '', age: '', age_category: '', education: '',
+        address: '', rt_rw: '', kelurahan: '', kecamatan: '', kabupaten: '', provinsi: '',
+        occupation: '', income: ''
+    });
     const [penungguFiles, setPenungguFiles] = useState<{ ktp: File | null; kk: File | null }>({
         ktp: null,
         kk: null
@@ -96,6 +104,19 @@ export default function DashboardRegisterPatientPage() {
             fd.append('nik', penungguForm.nik);
             fd.append('phone', penungguForm.phone);
             fd.append('relation', penungguForm.relation);
+            fd.append('gender', penungguForm.gender);
+            fd.append('dob', penungguForm.dob);
+            fd.append('age', penungguForm.age);
+            fd.append('age_category', penungguForm.age_category);
+            fd.append('education', penungguForm.education);
+            fd.append('address', penungguForm.address);
+            fd.append('rt_rw', penungguForm.rt_rw);
+            fd.append('kelurahan', penungguForm.kelurahan);
+            fd.append('kecamatan', penungguForm.kecamatan);
+            fd.append('kabupaten', penungguForm.kabupaten);
+            fd.append('provinsi', penungguForm.provinsi);
+            fd.append('occupation', penungguForm.occupation);
+            fd.append('income', penungguForm.income);
             if (penungguFiles.ktp) fd.append('ktp', penungguFiles.ktp);
             if (penungguFiles.kk) fd.append('kk', penungguFiles.kk);
             const res = await authFetch(apiUrl('/api/visitors'), { method: 'POST', body: fd });
@@ -162,7 +183,11 @@ export default function DashboardRegisterPatientPage() {
                     diagnosis: data.diagnosis || '',
                     treatment_plan: data.treatment_plan || '',
                     occupation: data.occupation || '',
-                    income: data.income || ''
+                    income: data.income || '',
+                    age: data.age || '',
+                    age_category: data.age_category || '',
+                    education: data.education || '',
+                    disease_category: data.disease_category || ''
                 });
                 setDataFromExisting(true);
                 setExistingPatientId(data.id);
@@ -438,6 +463,93 @@ export default function DashboardRegisterPatientPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
+                                    <Label>Jenis Kelamin</Label>
+                                    <select
+                                        className="w-full h-10 mt-1 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                        value={penungguForm.gender}
+                                        onChange={e => setPenungguForm(p => ({ ...p, gender: e.target.value }))}
+                                        required
+                                    >
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Tanggal Lahir</Label>
+                                    <Input
+                                        type="date"
+                                        value={penungguForm.dob}
+                                        onChange={e => {
+                                            const dob = e.target.value;
+                                            let ageStr = '';
+                                            let ageCat = '';
+                                            if (dob) {
+                                                const birth = new Date(dob);
+                                                const today = new Date();
+                                                let age = today.getFullYear() - birth.getFullYear();
+                                                const m = today.getMonth() - birth.getMonth();
+                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                                                ageStr = String(age);
+                                                if (age <= 4) ageCat = 'Balita';
+                                                else if (age <= 17) ageCat = 'Anak';
+                                                else if (age <= 59) ageCat = 'Dewasa';
+                                                else ageCat = 'Lansia';
+                                            }
+                                            setPenungguForm(p => ({ ...p, dob, age: ageStr, age_category: ageCat }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Usia</Label>
+                                    <Input 
+                                        value={penungguForm.age ? `${penungguForm.age} tahun` : '-'} 
+                                        readOnly 
+                                        className="bg-slate-50 text-slate-600" 
+                                    />
+                                    <p className="text-xs text-slate-500">Otomatis dari Tanggal Lahir</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Kategori Usia</Label>
+                                    <Input value={penungguForm.age_category} readOnly className="bg-slate-50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Pendidikan</Label>
+                                    <Input value={penungguForm.education} onChange={e => setPenungguForm(p => ({ ...p, education: e.target.value }))} />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <Label>Alamat Lengkap</Label>
+                                    <Input value={penungguForm.address} onChange={e => setPenungguForm(p => ({ ...p, address: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>RT/RW</Label>
+                                    <Input value={penungguForm.rt_rw} onChange={e => setPenungguForm(p => ({ ...p, rt_rw: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Kelurahan</Label>
+                                    <Input value={penungguForm.kelurahan} onChange={e => setPenungguForm(p => ({ ...p, kelurahan: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Kecamatan</Label>
+                                    <Input value={penungguForm.kecamatan} onChange={e => setPenungguForm(p => ({ ...p, kecamatan: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Kabupaten/Kota</Label>
+                                    <Input value={penungguForm.kabupaten} onChange={e => setPenungguForm(p => ({ ...p, kabupaten: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Provinsi</Label>
+                                    <Input value={penungguForm.provinsi} onChange={e => setPenungguForm(p => ({ ...p, provinsi: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Pekerjaan</Label>
+                                    <Input value={penungguForm.occupation} onChange={e => setPenungguForm(p => ({ ...p, occupation: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Penghasilan</Label>
+                                    <Input value={penungguForm.income} onChange={e => setPenungguForm(p => ({ ...p, income: e.target.value }))} />
+                                </div>
+                                <div className="space-y-2">
                                     <Label>Upload KTP Penunggu</Label>
                                     <Input
                                         type="file"
@@ -527,8 +639,34 @@ export default function DashboardRegisterPatientPage() {
                                         name="dob"
                                         type="date"
                                         value={formData.dob}
-                                        onChange={handleInputChange}
+                                        onChange={(e) => {
+                                            const dob = e.target.value;
+                                            let ageStr = '';
+                                            let ageCat = '';
+                                            if (dob) {
+                                                const birth = new Date(dob);
+                                                const today = new Date();
+                                                let age = today.getFullYear() - birth.getFullYear();
+                                                const m = today.getMonth() - birth.getMonth();
+                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                                                
+                                                ageStr = String(age);
+                                                if (age <= 4) ageCat = 'Balita';
+                                                else if (age <= 17) ageCat = 'Anak';
+                                                else if (age <= 59) ageCat = 'Dewasa';
+                                                else ageCat = 'Lansia';
+                                            }
+                                            setFormData(prev => ({ ...prev, dob, age_category: ageCat, age: ageStr }));
+                                        }}
                                         required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Kategori Usia</Label>
+                                    <Input
+                                        value={formData.age_category}
+                                        readOnly
+                                        className="bg-slate-50"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -550,14 +688,7 @@ export default function DashboardRegisterPatientPage() {
                                         id="age"
                                         type="text"
                                         readOnly
-                                        value={formData.dob ? (() => {
-                                            const today = new Date();
-                                            const birth = new Date(formData.dob);
-                                            let age = today.getFullYear() - birth.getFullYear();
-                                            const m = today.getMonth() - birth.getMonth();
-                                            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-                                            return age >= 0 ? `${age} tahun` : '-';
-                                        })() : '-'}
+                                        value={formData.age ? `${formData.age} tahun` : '-'}
                                         className="bg-slate-50 text-slate-600"
                                     />
                                     <p className="text-xs text-slate-500">Otomatis dari Tanggal Lahir</p>
@@ -674,6 +805,26 @@ export default function DashboardRegisterPatientPage() {
                                         value={formData.income}
                                         onChange={handleInputChange}
                                         placeholder="Estimasi penghasilan/bulan"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="education">Pendidikan</Label>
+                                    <Input
+                                        id="education"
+                                        name="education"
+                                        value={formData.education}
+                                        onChange={handleInputChange}
+                                        placeholder="Pendidikan terakhir"
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="disease_category">Kategori Penyakit</Label>
+                                    <Input
+                                        id="disease_category"
+                                        name="disease_category"
+                                        value={formData.disease_category}
+                                        onChange={handleInputChange}
+                                        placeholder="Contoh: Kanker, Non-Kanker, dll."
                                     />
                                 </div>
                             </div>

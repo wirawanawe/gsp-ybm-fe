@@ -156,7 +156,11 @@ export default function ScreeningPage() {
             diagnosis: patient.diagnosis || '',
             treatment_plan: patient.treatment_plan || '',
             occupation: patient.occupation || '',
-            income: patient.income || ''
+            income: patient.income || '',
+            age_category: patient.age_category || '',
+            age: patient.age || '',
+            education: patient.education || '',
+            disease_category: patient.disease_category || ''
         });
         setIsEditing(false);
         setDocsLoading(true);
@@ -291,7 +295,29 @@ export default function ScreeningPage() {
                                             <div className="space-y-3">
                                                 <div><label className="text-xs text-slate-500">Nama</label><Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-9 mt-0.5" /></div>
                                                 <div><label className="text-xs text-slate-500">NIK</label><Input value={editForm.nik} onChange={e => setEditForm({ ...editForm, nik: e.target.value })} className="h-9 mt-0.5" /></div>
-                                                <div><label className="text-xs text-slate-500">Tanggal Lahir</label><Input type="date" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Tanggal Lahir</label><Input type="date" value={editForm.dob} onChange={e => {
+                                                    const dob = e.target.value;
+                                                    let ageStr = '';
+                                                    let ageCat = '';
+                                                    if (dob) {
+                                                        const birth = new Date(dob);
+                                                        const today = new Date();
+                                                        let ageNum = today.getFullYear() - birth.getFullYear();
+                                                        const m = today.getMonth() - birth.getMonth();
+                                                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) ageNum--;
+                                                        ageStr = String(ageNum);
+                                                        if (ageNum <= 4) ageCat = 'Balita';
+                                                        else if (ageNum <= 17) ageCat = 'Anak';
+                                                        else if (ageNum <= 59) ageCat = 'Dewasa';
+                                                        else ageCat = 'Lansia';
+                                                    }
+                                                    setEditForm({ ...editForm, dob, age_category: ageCat, age: ageStr });
+                                                }} className="h-9 mt-0.5" /></div>
+                                                <div>
+                                                    <label className="text-xs text-slate-500">Usia</label>
+                                                    <Input value={editForm.age ? `${editForm.age} tahun` : '-'} readOnly className="h-9 mt-0.5 bg-slate-50 text-slate-600" />
+                                                </div>
+                                                <div><label className="text-xs text-slate-500">Kategori Usia</label><Input value={editForm.age_category} readOnly className="h-9 mt-0.5 bg-slate-50" /></div>
                                                 <div><label className="text-xs text-slate-500">Jenis Kelamin</label><select value={editForm.gender} onChange={e => setEditForm({ ...editForm, gender: e.target.value })} className="h-9 w-full mt-0.5 rounded-md border px-2 text-sm"><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
                                                 <div><label className="text-xs text-slate-500">Telepon</label><Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="h-9 mt-0.5" /></div>
                                                 <div><label className="text-xs text-slate-500">Alamat</label><Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="h-9 mt-0.5" /></div>
@@ -302,6 +328,8 @@ export default function ScreeningPage() {
                                                 <div><label className="text-xs text-slate-500">Provinsi</label><Input value={editForm.provinsi} onChange={e => setEditForm({ ...editForm, provinsi: e.target.value })} className="h-9 mt-0.5" /></div>
                                                 <div><label className="text-xs text-slate-500">Diagnosa</label><Input value={editForm.diagnosis} onChange={e => setEditForm({ ...editForm, diagnosis: e.target.value })} className="h-9 mt-0.5" /></div>
                                                 <div><label className="text-xs text-slate-500">Rencana Tindakan</label><Input value={editForm.treatment_plan} onChange={e => setEditForm({ ...editForm, treatment_plan: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Kategori Penyakit</label><Input value={editForm.disease_category} onChange={e => setEditForm({ ...editForm, disease_category: e.target.value })} className="h-9 mt-0.5" /></div>
+                                                <div><label className="text-xs text-slate-500">Pendidikan</label><Input value={editForm.education} onChange={e => setEditForm({ ...editForm, education: e.target.value })} className="h-9 mt-0.5" /></div>
                                                 <div><label className="text-xs text-slate-500">Pekerjaan</label><Input value={editForm.occupation} onChange={e => setEditForm({ ...editForm, occupation: e.target.value })} className="h-9 mt-0.5" /></div>
                                                 <div><label className="text-xs text-slate-500">Penghasilan</label><Input value={editForm.income} onChange={e => setEditForm({ ...editForm, income: e.target.value })} className="h-9 mt-0.5" /></div>
                                             </div>
@@ -317,6 +345,10 @@ export default function ScreeningPage() {
                                                 )}
                                                 {selectedPatient.diagnosis && <div><div className="text-xs text-slate-500">Diagnosa</div><div className="text-sm text-slate-800">{selectedPatient.diagnosis}</div></div>}
                                                 {selectedPatient.treatment_plan && <div><div className="text-xs text-slate-500">Rencana Tindakan</div><div className="text-sm text-slate-800">{selectedPatient.treatment_plan}</div></div>}
+                                                {selectedPatient.disease_category && <div><div className="text-xs text-slate-500">Kategori Penyakit</div><div className="text-sm text-slate-800">{selectedPatient.disease_category}</div></div>}
+                                                {selectedPatient.age && <div><div className="text-xs text-slate-500">Usia</div><div className="text-sm text-slate-800">{selectedPatient.age} tahun</div></div>}
+                                                {selectedPatient.age_category && <div><div className="text-xs text-slate-500">Kategori Usia</div><div className="text-sm text-slate-800">{selectedPatient.age_category}</div></div>}
+                                                {selectedPatient.education && <div><div className="text-xs text-slate-500">Pendidikan</div><div className="text-sm text-slate-800">{selectedPatient.education}</div></div>}
                                                 {selectedPatient.occupation && <div><div className="text-xs text-slate-500">Pekerjaan</div><div className="text-sm text-slate-800">{selectedPatient.occupation}</div></div>}
                                                 {selectedPatient.income && <div><div className="text-xs text-slate-500">Penghasilan</div><div className="text-sm text-slate-800">{selectedPatient.income}</div></div>}
                                             </div>

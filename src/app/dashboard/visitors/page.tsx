@@ -18,6 +18,19 @@ type Visitor = {
     created_at: string;
     ktp_path?: string | null;
     kk_path?: string | null;
+    gender?: string | null;
+    dob?: string | null;
+    age?: number | null;
+    age_category?: string | null;
+    education?: string | null;
+    address?: string | null;
+    rt_rw?: string | null;
+    kelurahan?: string | null;
+    kecamatan?: string | null;
+    kabupaten?: string | null;
+    provinsi?: string | null;
+    occupation?: string | null;
+    income?: string | null;
 };
 
 type ActivePatient = {
@@ -41,6 +54,19 @@ export default function VisitorsPage() {
         relation: string;
         ktp: File | null;
         kk: File | null;
+        gender: string;
+        dob: string;
+        age: string;
+        age_category: string;
+        education: string;
+        address: string;
+        rt_rw: string;
+        kelurahan: string;
+        kecamatan: string;
+        kabupaten: string;
+        provinsi: string;
+        occupation: string;
+        income: string;
     }>({
         patient_id: '',
         name: '',
@@ -48,15 +74,46 @@ export default function VisitorsPage() {
         phone: '',
         relation: '',
         ktp: null,
-        kk: null
+        kk: null,
+        gender: 'Laki-laki',
+        dob: '',
+        age: '',
+        age_category: '',
+        education: '',
+        address: '',
+        rt_rw: '',
+        kelurahan: '',
+        kecamatan: '',
+        kabupaten: '',
+        provinsi: '',
+        occupation: '',
+        income: ''
     });
 
     const [editVisitor, setEditVisitor] = useState<Visitor | null>(null);
-    const [editForm, setEditForm] = useState<{ name: string; nik: string; phone: string; relation: string }>({
+    const [editForm, setEditForm] = useState<{
+        name: string; nik: string; phone: string; relation: string;
+        gender: string; dob: string; age: string; age_category: string; education: string;
+        address: string; rt_rw: string; kelurahan: string; kecamatan: string; kabupaten: string; provinsi: string;
+        occupation: string; income: string;
+    }>({
         name: '',
         nik: '',
         phone: '',
-        relation: ''
+        relation: '',
+        gender: 'Laki-laki',
+        dob: '',
+        age: '',
+        age_category: '',
+        education: '',
+        address: '',
+        rt_rw: '',
+        kelurahan: '',
+        kecamatan: '',
+        kabupaten: '',
+        provinsi: '',
+        occupation: '',
+        income: ''
     });
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState('');
@@ -117,6 +174,19 @@ export default function VisitorsPage() {
             fd.append('nik', formState.nik);
             fd.append('phone', formState.phone);
             fd.append('relation', formState.relation);
+            fd.append('gender', formState.gender);
+            fd.append('dob', formState.dob);
+            fd.append('age', formState.age);
+            fd.append('age_category', formState.age_category);
+            fd.append('education', formState.education);
+            fd.append('address', formState.address);
+            fd.append('rt_rw', formState.rt_rw);
+            fd.append('kelurahan', formState.kelurahan);
+            fd.append('kecamatan', formState.kecamatan);
+            fd.append('kabupaten', formState.kabupaten);
+            fd.append('provinsi', formState.provinsi);
+            fd.append('occupation', formState.occupation);
+            fd.append('income', formState.income);
             if (formState.ktp) fd.append('ktp', formState.ktp);
             if (formState.kk) fd.append('kk', formState.kk);
 
@@ -138,7 +208,20 @@ export default function VisitorsPage() {
                 phone: '',
                 relation: '',
                 ktp: null,
-                kk: null
+                kk: null,
+                gender: 'Laki-laki',
+                dob: '',
+                age: '',
+                age_category: '',
+                education: '',
+                address: '',
+                rt_rw: '',
+                kelurahan: '',
+                kecamatan: '',
+                kabupaten: '',
+                provinsi: '',
+                occupation: '',
+                income: ''
             });
             fetchVisitors();
         } catch (err: any) {
@@ -243,6 +326,139 @@ export default function VisitorsPage() {
                                             }))
                                         }
                                         required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Jenis Kelamin
+                                    </label>
+                                    <select
+                                        className="w-full h-10 px-3 rounded-md border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        value={formState.gender}
+                                        onChange={e => setFormState(prev => ({ ...prev, gender: e.target.value }))}
+                                        required
+                                    >
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Tanggal Lahir
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={formState.dob}
+                                        onChange={e => {
+                                            const dob = e.target.value;
+                                            let ageStr = '';
+                                            let ageCat = '';
+                                            if (dob) {
+                                                const birth = new Date(dob);
+                                                const today = new Date();
+                                                let age = today.getFullYear() - birth.getFullYear();
+                                                const m = today.getMonth() - birth.getMonth();
+                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                                                ageStr = String(age);
+                                                if (age <= 4) ageCat = 'Balita';
+                                                else if (age <= 17) ageCat = 'Anak';
+                                                else if (age <= 59) ageCat = 'Dewasa';
+                                                else ageCat = 'Lansia';
+                                            }
+                                            setFormState(prev => ({ ...prev, dob, age: ageStr, age_category: ageCat }));
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Kategori Usia
+                                    </label>
+                                    <Input
+                                        value={formState.age_category}
+                                        readOnly
+                                        className="bg-slate-50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Pendidikan
+                                    </label>
+                                    <Input
+                                        value={formState.education}
+                                        onChange={e => setFormState(prev => ({ ...prev, education: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Alamat Lengkap
+                                    </label>
+                                    <Input
+                                        value={formState.address}
+                                        onChange={e => setFormState(prev => ({ ...prev, address: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        RT/RW
+                                    </label>
+                                    <Input
+                                        value={formState.rt_rw}
+                                        onChange={e => setFormState(prev => ({ ...prev, rt_rw: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Kelurahan
+                                    </label>
+                                    <Input
+                                        value={formState.kelurahan}
+                                        onChange={e => setFormState(prev => ({ ...prev, kelurahan: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Kecamatan
+                                    </label>
+                                    <Input
+                                        value={formState.kecamatan}
+                                        onChange={e => setFormState(prev => ({ ...prev, kecamatan: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Kabupaten/Kota
+                                    </label>
+                                    <Input
+                                        value={formState.kabupaten}
+                                        onChange={e => setFormState(prev => ({ ...prev, kabupaten: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Provinsi
+                                    </label>
+                                    <Input
+                                        value={formState.provinsi}
+                                        onChange={e => setFormState(prev => ({ ...prev, provinsi: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Pekerjaan
+                                    </label>
+                                    <Input
+                                        value={formState.occupation}
+                                        onChange={e => setFormState(prev => ({ ...prev, occupation: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                        Penghasilan
+                                    </label>
+                                    <Input
+                                        value={formState.income}
+                                        onChange={e => setFormState(prev => ({ ...prev, income: e.target.value }))}
                                     />
                                 </div>
                                 <div>
@@ -407,7 +623,20 @@ export default function VisitorsPage() {
                                                         name: v.name,
                                                         nik: v.nik,
                                                         phone: v.phone || '',
-                                                        relation: v.relation
+                                                        relation: v.relation,
+                                                        gender: v.gender || 'Laki-laki',
+                                                        dob: v.dob ? v.dob.slice(0, 10) : '',
+                                                        age: v.age ? String(v.age) : '',
+                                                        age_category: v.age_category || '',
+                                                        education: v.education || '',
+                                                        address: v.address || '',
+                                                        rt_rw: v.rt_rw || '',
+                                                        kelurahan: v.kelurahan || '',
+                                                        kecamatan: v.kecamatan || '',
+                                                        kabupaten: v.kabupaten || '',
+                                                        provinsi: v.provinsi || '',
+                                                        occupation: v.occupation || '',
+                                                        income: v.income || ''
                                                     });
                                                     setEditError('');
                                                 }}
@@ -597,7 +826,7 @@ export default function VisitorsPage() {
             {editVisitor && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setEditVisitor(null)}>
                     <div
-                        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] sm:max-h-none shadow-xl overflow-hidden flex flex-col"
+                        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[90vh] sm:max-h-none shadow-xl overflow-hidden flex flex-col"
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
@@ -685,6 +914,134 @@ export default function VisitorsPage() {
                                     onChange={e => setEditForm({ ...editForm, relation: e.target.value })}
                                     className="h-9"
                                 />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Jenis Kelamin</label>
+                                    <select
+                                        value={editForm.gender}
+                                        onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
+                                        className="h-9 w-full rounded-md border border-slate-200 px-2 text-sm"
+                                    >
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Tanggal Lahir</label>
+                                    <Input
+                                        type="date"
+                                        value={editForm.dob}
+                                        onChange={e => {
+                                            const dob = e.target.value;
+                                            let ageStr = '';
+                                            let ageCat = '';
+                                            if (dob) {
+                                                const birth = new Date(dob);
+                                                const today = new Date();
+                                                let age = today.getFullYear() - birth.getFullYear();
+                                                const m = today.getMonth() - birth.getMonth();
+                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                                                ageStr = String(age);
+                                                if (age <= 4) ageCat = 'Balita';
+                                                else if (age <= 17) ageCat = 'Anak';
+                                                else if (age <= 59) ageCat = 'Dewasa';
+                                                else ageCat = 'Lansia';
+                                            }
+                                            setEditForm({ ...editForm, dob, age: ageStr, age_category: ageCat });
+                                        }}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                     <label className="text-xs text-slate-500">Usia</label>
+                                     <Input
+                                         value={editForm.age ? `${editForm.age} tahun` : '-'}
+                                         readOnly
+                                         className="h-9 bg-slate-50 text-slate-600"
+                                     />
+                                     <p className="text-[10px] text-slate-500">Otomatis dari Tanggal Lahir</p>
+                                 </div>
+                                 <div className="space-y-1">
+                                     <label className="text-xs text-slate-500">Kategori Usia</label>
+                                     <Input
+                                         value={editForm.age_category}
+                                         readOnly
+                                         className="h-9 bg-slate-50"
+                                     />
+                                 </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Pendidikan</label>
+                                    <Input
+                                        value={editForm.education}
+                                        onChange={e => setEditForm({ ...editForm, education: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-xs text-slate-500">Alamat Lengkap</label>
+                                    <Input
+                                        value={editForm.address}
+                                        onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">RT/RW</label>
+                                    <Input
+                                        value={editForm.rt_rw}
+                                        onChange={e => setEditForm({ ...editForm, rt_rw: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kelurahan</label>
+                                    <Input
+                                        value={editForm.kelurahan}
+                                        onChange={e => setEditForm({ ...editForm, kelurahan: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kecamatan</label>
+                                    <Input
+                                        value={editForm.kecamatan}
+                                        onChange={e => setEditForm({ ...editForm, kecamatan: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kabupaten/Kota</label>
+                                    <Input
+                                        value={editForm.kabupaten}
+                                        onChange={e => setEditForm({ ...editForm, kabupaten: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Provinsi</label>
+                                    <Input
+                                        value={editForm.provinsi}
+                                        onChange={e => setEditForm({ ...editForm, provinsi: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Pekerjaan</label>
+                                    <Input
+                                        value={editForm.occupation}
+                                        onChange={e => setEditForm({ ...editForm, occupation: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Penghasilan</label>
+                                    <Input
+                                        value={editForm.income}
+                                        onChange={e => setEditForm({ ...editForm, income: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
                             </div>
                             <div className="pt-3 flex justify-end gap-2 border-t border-slate-100 mt-2">
                                 <Button

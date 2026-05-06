@@ -32,6 +32,10 @@ type Patient = {
     treatment_plan?: string | null;
     occupation?: string | null;
     income?: string | null;
+    age_category?: string | null;
+    age?: string | number | null;
+    education?: string | null;
+    disease_category?: string | null;
 };
 
 type Doc = { id: number; document_type: string; file_path: string };
@@ -67,6 +71,10 @@ export default function PatientsPage() {
         treatment_plan: string;
         occupation: string;
         income: string;
+        age_category: string;
+        age: string;
+        education: string;
+        disease_category: string;
     }>({
         name: '',
         nik: '',
@@ -82,7 +90,11 @@ export default function PatientsPage() {
         diagnosis: '',
         treatment_plan: '',
         occupation: '',
-        income: ''
+        income: '',
+        age_category: '',
+        age: '',
+        education: '',
+        disease_category: ''
     });
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState('');
@@ -192,7 +204,11 @@ export default function PatientsPage() {
             diagnosis: p.diagnosis || '',
             treatment_plan: p.treatment_plan || '',
             occupation: p.occupation || '',
-            income: p.income || ''
+            income: p.income || '',
+            age_category: p.age_category || '',
+            age: p.age ? String(p.age) : '',
+            education: p.education || '',
+            disease_category: p.disease_category || ''
         });
         setEditError('');
     };
@@ -525,10 +541,36 @@ export default function PatientsPage() {
                                     <Input
                                         type="date"
                                         value={editForm.dob}
-                                        onChange={e => setEditForm({ ...editForm, dob: e.target.value })}
+                                        onChange={e => {
+                                            const dob = e.target.value;
+                                            let ageStr = '';
+                                            let ageCat = '';
+                                            if (dob) {
+                                                const birth = new Date(dob);
+                                                const today = new Date();
+                                                let ageNum = today.getFullYear() - birth.getFullYear();
+                                                const m = today.getMonth() - birth.getMonth();
+                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) ageNum--;
+                                                ageStr = String(ageNum);
+                                                if (ageNum <= 4) ageCat = 'Balita';
+                                                else if (ageNum <= 17) ageCat = 'Anak';
+                                                else if (ageNum <= 59) ageCat = 'Dewasa';
+                                                else ageCat = 'Lansia';
+                                            }
+                                            setEditForm({ ...editForm, dob, age_category: ageCat, age: ageStr });
+                                        }}
                                         className="h-9"
                                     />
                                 </div>
+                                 <div className="space-y-1">
+                                     <label className="text-xs text-slate-500">Usia</label>
+                                     <Input
+                                         value={editForm.age ? `${editForm.age} tahun` : '-'}
+                                         readOnly
+                                         className="h-9 bg-slate-50 text-slate-600"
+                                     />
+                                     <p className="text-[10px] text-slate-500">Otomatis dari Tanggal Lahir</p>
+                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs text-slate-500">Jenis Kelamin</label>
                                     <select
@@ -626,6 +668,32 @@ export default function PatientsPage() {
                                         value={editForm.income}
                                         onChange={e => setEditForm({ ...editForm, income: e.target.value })}
                                         className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Pendidikan</label>
+                                    <Input
+                                        value={editForm.education}
+                                        onChange={e => setEditForm({ ...editForm, education: e.target.value })}
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Kategori Usia</label>
+                                    <Input
+                                        value={editForm.age_category || '-'}
+                                        readOnly
+                                        className="h-9 bg-slate-50 text-slate-600"
+                                    />
+                                    <p className="text-[10px] text-slate-500">Otomatis dari Tanggal Lahir</p>
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-xs text-slate-500">Kategori Penyakit</label>
+                                    <Input
+                                        value={editForm.disease_category}
+                                        onChange={e => setEditForm({ ...editForm, disease_category: e.target.value })}
+                                        className="h-9"
+                                        placeholder="Contoh: Kanker, Non-Kanker, dll."
                                     />
                                 </div>
                             </div>

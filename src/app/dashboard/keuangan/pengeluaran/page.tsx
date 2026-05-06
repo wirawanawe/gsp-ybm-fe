@@ -10,13 +10,13 @@ const PAYMENT_METHODS = ['Tunai', 'Transfer', 'Lainnya'];
 const emptyForm = {
     expense_date: new Date().toISOString().slice(0, 10),
     category: 'Operasional', description: '', amount: '',
-    payment_method: 'Tunai', receipt_number: '', person_in_charge: '',
+    payment_method: 'Tunai', receipt_number: '', person_in_charge: '', paid_to: ''
 };
 
 const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d: string) =>
-    d ? new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 const CAT_COLORS: Record<string, string> = {
     Operasional: 'bg-blue-100 text-blue-700',
@@ -63,6 +63,7 @@ export default function PengeluaranPage() {
             category: r.category || 'Operasional', description: r.description || '',
             amount: r.amount || '', payment_method: r.payment_method || 'Tunai',
             receipt_number: r.receipt_number || '', person_in_charge: r.person_in_charge || '',
+            paid_to: r.paid_to || ''
         });
         setShowModal(true);
     };
@@ -160,6 +161,7 @@ export default function PengeluaranPage() {
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Kategori</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Metode</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Jumlah</th>
+                                <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">Dibayarkan Kpd</th>
                                 <th className="text-left px-4 py-3.5 text-slate-600 font-semibold">PIC (Kwitansi)</th>
                                 <th className="px-4 py-3.5"></th>
                             </tr>
@@ -176,6 +178,7 @@ export default function PengeluaranPage() {
                                     </td>
                                     <td className="px-4 py-3.5 text-slate-500 text-xs">{r.payment_method}</td>
                                     <td className="px-4 py-3.5 text-right font-semibold text-amber-700">{fmtCurrency(Number(r.amount))}</td>
+                                    <td className="px-4 py-3.5 text-slate-500 text-xs">{r.paid_to || '—'}</td>
                                     <td className="px-4 py-3.5">
                                         <div className="font-medium text-slate-800 text-xs">{r.person_in_charge || '—'}</div>
                                         <div className="text-[10px] text-slate-500">{r.receipt_number ? '#' + r.receipt_number : '—'}</div>
@@ -193,7 +196,7 @@ export default function PengeluaranPage() {
                             <tr>
                                 <td colSpan={4} className="px-5 py-3 font-semibold text-slate-700">Total</td>
                                 <td className="px-4 py-3 text-right font-bold text-amber-700">{fmtCurrency(total)}</td>
-                                <td></td>
+                                <td colSpan={3}></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -236,9 +239,15 @@ export default function PengeluaranPage() {
                                     </select>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Penanggung Jawab</label>
-                                <input value={form.person_in_charge} onChange={e => setForm(f => ({ ...f, person_in_charge: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Opsional" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Penanggung Jawab</label>
+                                    <input value={form.person_in_charge} onChange={e => setForm(f => ({ ...f, person_in_charge: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Opsional" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Dibayarkan kepada</label>
+                                    <input value={form.paid_to} onChange={e => setForm(f => ({ ...f, paid_to: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Opsional" />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Nomor Kwitansi</label>

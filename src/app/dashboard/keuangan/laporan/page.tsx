@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d: string) =>
-    d ? new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -47,22 +47,26 @@ export default function LaporanKeuanganPage() {
         const sortedTrx = [...report.transactions].reverse();
         
         let cumulativeSaldo = 0;
-        const exportData = sortedTrx.map((t: any, idx: number) => {
+        const exportData = sortedTrx.map((t: any) => {
             const isIncome = t.type === 'income';
             const incomeAmt = isIncome ? Number(t.amount) : 0;
             const expenseAmt = !isIncome ? Number(t.amount) : 0;
             cumulativeSaldo = cumulativeSaldo + incomeAmt - expenseAmt;
             
+            const dateObj = t.trx_date ? new Date(t.trx_date) : null;
+            const formattedDate = dateObj 
+                ? `${dateObj.getDate()}-${dateObj.toLocaleString('id-ID', { month: 'short' }).replace('.', '')}-${dateObj.getFullYear().toString().slice(2)}` 
+                : '';
+
             return {
-                "No": idx + 1,
-                "Tanggal": t.trx_date ? new Date(t.trx_date).toLocaleDateString('id-ID') : '',
-                "Uraian": t.description || '',
-                "Dana Masuk": incomeAmt,
-                "Dana Keluar": expenseAmt,
-                "Saldo": cumulativeSaldo,
-                "Sumber Dana": isIncome ? (t.category || '') : '',
-                "Penanggung jawab": t.person_in_charge || '',
-                "Keterangan": t.receipt_number ? `Kwitansi: ${t.receipt_number}` : ''
+                "Tanggal": formattedDate,
+                "No Bukti": t.receipt_number || '',
+                "Uraian/Penjelasan": t.description || '',
+                "Dibayar Kepada": t.paid_to || '',
+                "Kode Akun": t.category || '',
+                "Debit": incomeAmt > 0 ? incomeAmt : '',
+                "Kredit": expenseAmt > 0 ? expenseAmt : '',
+                "Saldo": cumulativeSaldo
             };
         });
 
@@ -72,8 +76,8 @@ export default function LaporanKeuanganPage() {
         
         // Set column widths
         ws['!cols'] = [
-            { wch: 5 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, 
-            { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
+            { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 30 }, 
+            { wch: 15 }, { wch: 15 }, { wch: 15 }
         ];
 
         let fileName = "Laporan_Keuangan";
