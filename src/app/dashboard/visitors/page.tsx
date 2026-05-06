@@ -859,7 +859,7 @@ export default function VisitorsPage() {
                                     }
                                     setVisitors(prev =>
                                         prev.map(v =>
-                                            v.id === editVisitor.id ? { ...v, ...editForm } : v
+                                            v.id === editVisitor.id ? { ...v, ...editForm, age: editForm.age ? Number(editForm.age) : null } : v
                                         )
                                     );
                                     setEditVisitor(null);

@@ -31,6 +31,7 @@ export default function DashboardRegisterPatientPage() {
         treatment_plan: '',
         occupation: '',
         income: '',
+        age: '',
         age_category: '',
         education: '',
         disease_category: ''
@@ -1031,7 +1032,11 @@ export default function DashboardRegisterPatientPage() {
                                         diagnosis: '',
                                         treatment_plan: '',
                                         occupation: '',
-                                        income: ''
+                                        income: '',
+                                        age: '',
+                                        age_category: '',
+                                        education: '',
+                                        disease_category: ''
                                     });
                                     setFiles({
                                         ktp: null,
@@ -1040,7 +1045,12 @@ export default function DashboardRegisterPatientPage() {
                                         sktm: null,
                                         rujukan: null
                                     });
-                                    setPenungguForm({ patient_id: '', name: '', nik: '', phone: '', relation: '' });
+                                    setPenungguForm({ 
+                                        patient_id: '', name: '', nik: '', phone: '', relation: '',
+                                        gender: 'Laki-laki', dob: '', age: '', age_category: '', education: '',
+                                        address: '', rt_rw: '', kelurahan: '', kecamatan: '', kabupaten: '', provinsi: '',
+                                        occupation: '', income: ''
+                                    });
                                     setPenungguFiles({ ktp: null, kk: null });
                                 }}
                             >
