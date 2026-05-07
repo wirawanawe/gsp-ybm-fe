@@ -43,8 +43,8 @@ export default function LaporanKeuanganPage() {
     const handleDownloadExcel = () => {
         if (!report || !report.transactions) return;
         
-        // Ensure transactions are sorted chronologically ascending for running balance
-        const sortedTrx = [...report.transactions].reverse();
+        // transactions are already sorted by receipt_number ASC from backend
+        const sortedTrx = [...report.transactions];
         
         let cumulativeSaldo = 0;
         const exportData = sortedTrx.map((t: any) => {

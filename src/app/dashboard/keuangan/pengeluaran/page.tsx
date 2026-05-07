@@ -39,6 +39,17 @@ export default function PengeluaranPage() {
     const [filterFrom, setFilterFrom] = useState('');
     const [filterTo, setFilterTo] = useState('');
     const [filterCat, setFilterCat] = useState('');
+    const [categories, setCategories] = useState<any[]>([]);
+
+    const fetchCategories = useCallback(async () => {
+        try {
+            const res = await authFetch(apiUrl('/api/account-codes?type=Expense&is_active=true'));
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setCategories(data);
+            }
+        } catch { }
+    }, []);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -53,7 +64,10 @@ export default function PengeluaranPage() {
         } catch { } finally { setLoading(false); }
     }, [filterFrom, filterTo, filterCat]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { 
+        fetchData();
+        fetchCategories();
+    }, [fetchData, fetchCategories]);
 
     const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setShowModal(true); };
     const openEdit = (r: any) => {
@@ -135,8 +149,9 @@ export default function PengeluaranPage() {
                 <div>
                     <label className="text-xs text-slate-500 block mb-1">Kategori</label>
                     <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                        <option value="">Semua</option>
-                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                        <option value="">Semua Kategori</option>
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        {!categories.length && CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
                 {(filterFrom || filterTo || filterCat) && (
@@ -219,7 +234,13 @@ export default function PengeluaranPage() {
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
                                     <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                                        <option value="">Pilih Kategori</option>
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.name}>
+                                                [{c.code}] {c.name}
+                                            </option>
+                                        ))}
+                                        {!categories.length && CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                             </div>

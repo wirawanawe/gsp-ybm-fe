@@ -117,6 +117,26 @@ export default function SettingsPage() {
                         Akses Menu <ChevronRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
                     </div>
                 </Link>
+
+                <Link 
+                    href="/dashboard/settings/account-codes"
+                    className="border border-slate-200 rounded-xl p-5 bg-slate-50/80 hover:bg-violet-50/50 hover:border-violet-300 transition-colors group cursor-pointer h-full flex flex-col"
+                >
+                    <div className="flex items-center gap-3 mb-4 flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+                            <Shield size={22} />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-slate-800 group-hover:text-violet-700 transition-colors">Master Kategori Keuangan</h2>
+                            <p className="text-xs text-slate-500">
+                                Pengaturan kategori pemasukan dan pengeluaran.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center text-violet-600 text-sm font-medium mt-auto group-hover:underline">
+                        Akses Menu <ChevronRight size={16} className="ml-1 transition-transform group-hover:translate-x-1" />
+                    </div>
+                </Link>
             </div>
 
         </div>

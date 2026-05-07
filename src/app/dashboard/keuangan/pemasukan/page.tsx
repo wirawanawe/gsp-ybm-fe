@@ -36,6 +36,18 @@ export default function PemasukanPage() {
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [filterFrom, setFilterFrom] = useState('');
     const [filterTo, setFilterTo] = useState('');
+    const [filterCat, setFilterCat] = useState('');
+    const [categories, setCategories] = useState<any[]>([]);
+
+    const fetchCategories = useCallback(async () => {
+        try {
+            const res = await authFetch(apiUrl('/api/account-codes?type=Income&is_active=true'));
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setCategories(data);
+            }
+        } catch { }
+    }, []);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -43,13 +55,17 @@ export default function PemasukanPage() {
             let q = '?limit=200';
             if (filterFrom) q += `&date_from=${filterFrom}`;
             if (filterTo) q += `&date_to=${filterTo}`;
+            if (filterCat) q += `&category=${encodeURIComponent(filterCat)}`;
             const res = await authFetch(apiUrl(`/api/finance/income${q}`));
             const data = await res.json();
             setRecords(Array.isArray(data) ? data : []);
         } catch { } finally { setLoading(false); }
-    }, [filterFrom, filterTo]);
+    }, [filterFrom, filterTo, filterCat]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { 
+        fetchData();
+        fetchCategories();
+    }, [fetchData, fetchCategories]);
 
     const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setShowModal(true); };
     const openEdit = (r: any) => {
@@ -114,8 +130,16 @@ export default function PemasukanPage() {
                     <label className="text-xs text-slate-500 block mb-1">Sampai Tanggal</label>
                     <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
-                {(filterFrom || filterTo) && (
-                    <button onClick={() => { setFilterFrom(''); setFilterTo(''); }} className="self-end text-sm text-slate-500 hover:text-slate-700 py-2">Reset</button>
+                <div>
+                    <label className="text-xs text-slate-500 block mb-1">Kategori</label>
+                    <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="">Semua Kategori</option>
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        {!categories.length && CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
+                {(filterFrom || filterTo || filterCat) && (
+                    <button onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterCat(''); }} className="self-end text-sm text-slate-500 hover:text-slate-700 py-2">Reset</button>
                 )}
             </div>
 
@@ -193,7 +217,13 @@ export default function PemasukanPage() {
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
                                     <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                                        <option value="">Pilih Kategori</option>
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.name}>
+                                                [{c.code}] {c.name}
+                                            </option>
+                                        ))}
+                                        {!categories.length && CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                             </div>
