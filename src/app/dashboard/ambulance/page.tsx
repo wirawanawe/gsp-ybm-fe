@@ -59,7 +59,6 @@ export default function AmbulancePage() {
     const [completeLogId, setCompleteLogId] = useState<number | null>(null);
     const [returnTime, setReturnTime] = useState('');
     const [kmEnd, setKmEnd] = useState('');
-    const [fuelCost, setFuelCost] = useState('');
     const [isCompleting, setIsCompleting] = useState(false);
 
     const fetchData = async () => {
@@ -122,7 +121,6 @@ export default function AmbulancePage() {
     const openCompleteModal = (logId: number) => {
         setCompleteLogId(logId);
         setKmEnd('');
-        setFuelCost('');
         // Default jam pulang saat ini format datetime-local
         const now = new Date();
         const year = now.getFullYear();
@@ -261,8 +259,7 @@ export default function AmbulancePage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         return_time: returnTime || null,
-                        km_end: Number(kmEnd) || 0,
-                        fuel_cost: Number(fuelCost) || 0
+                        km_end: Number(kmEnd) || 0
                     })
                 }
             );
@@ -554,7 +551,7 @@ export default function AmbulancePage() {
                                     onChange={e => setReturnTime(e.target.value)}
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-3">
                                 <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1">
                                         KM Akhir
@@ -565,18 +562,6 @@ export default function AmbulancePage() {
                                         placeholder="0"
                                         value={kmEnd}
                                         onChange={e => setKmEnd(e.target.value)}
-                                        className="h-10 text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-600 mb-1">
-                                        Biaya BBM (Rp) (Opsional)
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        placeholder="0"
-                                        value={fuelCost}
-                                        onChange={e => setFuelCost(e.target.value)}
                                         className="h-10 text-sm"
                                     />
                                 </div>

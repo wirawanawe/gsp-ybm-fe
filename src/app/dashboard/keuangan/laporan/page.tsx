@@ -40,52 +40,28 @@ export default function LaporanKeuanganPage() {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-    const handleDownloadExcel = () => {
-        if (!report || !report.transactions) return;
-        
-        // transactions are already sorted by receipt_number ASC from backend
-        const sortedTrx = [...report.transactions];
-        
-        let cumulativeSaldo = 0;
-        const exportData = sortedTrx.map((t: any) => {
-            const isIncome = t.type === 'income';
-            const incomeAmt = isIncome ? Number(t.amount) : 0;
-            const expenseAmt = !isIncome ? Number(t.amount) : 0;
-            cumulativeSaldo = cumulativeSaldo + incomeAmt - expenseAmt;
+    const handleDownloadExcel = async () => {
+        try {
+            let q = `?period=${period}&year=${year}&month=${month}`;
+            if (period === 'weekly' && dateFrom && dateTo) {
+                q += `&date_from=${dateFrom}&date_to=${dateTo}`;
+            }
             
-            const dateObj = t.trx_date ? new Date(t.trx_date) : null;
-            const formattedDate = dateObj 
-                ? `${dateObj.getDate()}-${dateObj.toLocaleString('id-ID', { month: 'short' }).replace('.', '')}-${dateObj.getFullYear().toString().slice(2)}` 
-                : '';
-
-            return {
-                "Tanggal": formattedDate,
-                "No Bukti": t.receipt_number || '',
-                "Uraian/Penjelasan": t.description || '',
-                "Dibayar Kepada": t.paid_to || '',
-                "Kode Akun": t.category || '',
-                "Debit": incomeAmt > 0 ? incomeAmt : '',
-                "Kredit": expenseAmt > 0 ? expenseAmt : '',
-                "Saldo": cumulativeSaldo
-            };
-        });
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Laporan Keuangan");
-        
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 30 }, 
-            { wch: 15 }, { wch: 15 }, { wch: 15 }
-        ];
-
-        let fileName = "Laporan_Keuangan";
-        if (period === 'monthly') fileName += `_${MONTHS[month-1]}_${year}`;
-        else if (period === 'yearly') fileName += `_${year}`;
-        else fileName += `_Custom`;
-
-        XLSX.writeFile(wb, `${fileName}.xlsx`);
+            const res = await authFetch(apiUrl(`/api/finance/export${q}`));
+            if (!res.ok) throw new Error("Gagal download");
+            
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Laporan_Keuangan_${period}_${new Date().getTime()}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            alert("Gagal mengekspor laporan");
+        }
     };
 
     return (
