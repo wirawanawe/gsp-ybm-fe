@@ -39,6 +39,17 @@ type AmbulanceUsageRow = {
     status: string;
 };
 
+type ActivityReportRow = {
+    id: number;
+    activity_title: string;
+    activity_type: string;
+    participant_name: string;
+    participant_type: string;
+    attendance_date: string;
+    status: string;
+    notes: string | null;
+};
+
 export default function ReportsPage() {
     const [stats, setStats] = useState<OccupancyStats>({
         totalPatients: 0,
@@ -52,6 +63,7 @@ export default function ReportsPage() {
     const [finalStatusFilter, setFinalStatusFilter] = useState<string>('');
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
+    const [activityReport, setActivityReport] = useState<ActivityReportRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -80,6 +92,7 @@ export default function ReportsPage() {
                 setError('Tanggal awal tidak boleh lebih besar dari tanggal akhir');
                 setPatientInOut([]);
                 setAmbulanceUsage([]);
+                setActivityReport([]);
                 setLoading(false);
                 return;
             }
@@ -89,14 +102,18 @@ export default function ReportsPage() {
             if (endDate) params.append('end_date', endDate);
             if (finalStatusFilter) params.append('final_status', finalStatusFilter);
 
-            const [inOutRes, ambRes] = await Promise.all([
+            const [inOutRes, ambRes, actRes] = await Promise.all([
                 authFetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
-                authFetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`))
+                authFetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`)),
+                authFetch(apiUrl(`/api/reports/activity`))
             ]);
             const inOutData = await inOutRes.json();
             const ambData = await ambRes.json();
+            const actData = await actRes.json();
+            
             setPatientInOut(Array.isArray(inOutData) ? inOutData : []);
             setAmbulanceUsage(Array.isArray(ambData) ? ambData : []);
+            setActivityReport(Array.isArray(actData) ? actData : []);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -120,6 +137,13 @@ export default function ReportsPage() {
         });
     };
 
+    const formatDateOnly = (dt: string | null) => {
+        if (!dt) return '-';
+        return new Date(dt).toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric'
+        });
+    };
+
     const buildDateQuery = () => {
         const params = new URLSearchParams();
         if (startDate) params.append('start_date', startDate);
@@ -128,10 +152,10 @@ export default function ReportsPage() {
         return params.toString();
     };
 
-    const downloadReport = async (path: string, filenamePrefix: string) => {
+    const downloadReport = async (path: string, filenamePrefix: string, useQuery: boolean = true) => {
         try {
-            const qs = buildDateQuery();
-            const url = apiUrl(`/api/reports/${path}?${qs}`);
+            const qs = useQuery ? buildDateQuery() : '';
+            const url = apiUrl(`/api/reports/${path}${qs ? `?${qs}` : ''}`);
             const res = await authFetch(url);
             if (!res.ok) {
                 throw new Error('Gagal mengunduh laporan');
@@ -141,7 +165,7 @@ export default function ReportsPage() {
             const a = document.createElement('a');
             a.href = blobUrl;
             const suffix =
-                startDate && endDate
+                useQuery && startDate && endDate
                     ? (startDate === endDate
                         ? startDate
                         : `${startDate}_sampai_${endDate}`)
@@ -162,7 +186,7 @@ export default function ReportsPage() {
                 <div className="min-w-0">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Laporan</h1>
                     <p className="text-slate-600 text-sm mt-1">
-                        Laporan pasien masuk/keluar dan penggunaan ambulans per tanggal.
+                        Laporan pasien, ambulans, dan kegiatan operasional.
                     </p>
                     {error && (
                         <p className="mt-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
@@ -194,7 +218,7 @@ export default function ReportsPage() {
                         value={finalStatusFilter}
                         onChange={e => setFinalStatusFilter(e.target.value)}
                     >
-                        <option value="">Semua Status</option>
+                        <option value="">Status Pasien</option>
                         <option value="Sembuh">Sembuh / Pulang</option>
                         <option value="Rujukan Lanjut">Rujukan Lanjut</option>
                         <option value="Meninggal">Meninggal</option>
@@ -345,7 +369,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Laporan Penggunaan Ambulans */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <Ambulance size={20} className="text-emerald-600" />
@@ -404,6 +428,72 @@ export default function ReportsPage() {
                                                 }`}>
                                                 {row.status === 'In-Journey' ? 'Dalam Perjalanan' : 'Selesai'}
                                             </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+
+            {/* Laporan Kegiatan */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <Calendar size={20} className="text-emerald-600" />
+                        <h2 className="font-bold text-slate-800">
+                            Laporan Kegiatan & Presensi - Semua Data
+                        </h2>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={activityReport.length === 0}
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
+                        onClick={() => downloadReport('activity/export', 'laporan-kegiatan', false)}
+                    >
+                        <Download size={16} />
+                        Download .xlsx
+                    </Button>
+                </div>
+                <div className="overflow-x-auto">
+                    {loading ? (
+                        <div className="p-8 text-center text-slate-500">Memuat...</div>
+                    ) : activityReport.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500">Tidak ada data kegiatan pada tanggal ini.</div>
+                    ) : (
+                        <table className="w-full text-left min-w-[640px] sm:min-w-0">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tanggal</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kegiatan</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Peserta</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kategori</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
+                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {activityReport.map(row => (
+                                    <tr key={row.id} className="hover:bg-slate-50/50">
+                                        <td className="px-6 py-4 text-sm whitespace-nowrap">
+                                            {formatDateOnly(row.attendance_date)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-semibold text-slate-800">{row.activity_title}</div>
+                                            <div className="text-xs text-slate-500">{row.activity_type}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-700">{row.participant_name}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-600">{row.participant_type}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                                }`}>
+                                                {row.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate">
+                                            {row.notes || '-'}
                                         </td>
                                     </tr>
                                 ))}
