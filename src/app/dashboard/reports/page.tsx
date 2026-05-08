@@ -64,8 +64,24 @@ export default function ReportsPage() {
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
     const [activityReport, setActivityReport] = useState<ActivityReportRow[]>([]);
+    const [activities, setActivities] = useState<any[]>([]);
+    const [activityId, setActivityId] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const fetchActivities = async () => {
+        try {
+            const res = await authFetch(apiUrl('/api/activities'));
+            const data = await res.json();
+            setActivities(data);
+        } catch (e) {
+            console.error('Failed to fetch activities', e);
+        }
+    };
+
+    useEffect(() => {
+        fetchActivities();
+    }, []);
 
     const fetchStats = async () => {
         try {
@@ -100,12 +116,12 @@ export default function ReportsPage() {
             const params = new URLSearchParams();
             if (startDate) params.append('start_date', startDate);
             if (endDate) params.append('end_date', endDate);
-            if (finalStatusFilter) params.append('final_status', finalStatusFilter);
+            if (activityId) params.append('activity_id', activityId);
 
             const [inOutRes, ambRes, actRes] = await Promise.all([
                 authFetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
                 authFetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`)),
-                authFetch(apiUrl(`/api/reports/activity`))
+                authFetch(apiUrl(`/api/reports/activity?${params.toString()}`))
             ]);
             const inOutData = await inOutRes.json();
             const ambData = await ambRes.json();
@@ -127,7 +143,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         fetchReports();
-    }, [startDate, endDate, finalStatusFilter]);
+    }, [startDate, endDate, finalStatusFilter, activityId]);
 
     const formatDateTime = (dt: string | null) => {
         if (!dt) return '-';
@@ -149,6 +165,7 @@ export default function ReportsPage() {
         if (startDate) params.append('start_date', startDate);
         if (endDate) params.append('end_date', endDate);
         if (finalStatusFilter) params.append('final_status', finalStatusFilter);
+        if (activityId) params.append('activity_id', activityId);
         return params.toString();
     };
 
@@ -440,18 +457,30 @@ export default function ReportsPage() {
             {/* Laporan Kegiatan */}
             <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <Calendar size={20} className="text-emerald-600" />
-                        <h2 className="font-bold text-slate-800">
-                            Laporan Kegiatan & Presensi - Semua Data
-                        </h2>
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
+                        <div className="flex items-center gap-2 min-w-fit">
+                            <Calendar size={20} className="text-emerald-600" />
+                            <h2 className="font-bold text-slate-800">
+                                Laporan Kegiatan & Presensi
+                            </h2>
+                        </div>
+                        <select 
+                            value={activityId}
+                            onChange={(e) => setActivityId(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all min-w-[200px]"
+                        >
+                            <option value="">Semua Kegiatan</option>
+                            {activities.map(act => (
+                                <option key={act.id} value={act.id}>{act.title}</option>
+                            ))}
+                        </select>
                     </div>
                     <Button
                         size="sm"
                         variant="outline"
                         disabled={activityReport.length === 0}
                         className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
-                        onClick={() => downloadReport('activity/export', 'laporan-kegiatan', false)}
+                        onClick={() => downloadReport('activity/export', 'laporan-kegiatan', true)}
                     >
                         <Download size={16} />
                         Download .xlsx
@@ -492,7 +521,7 @@ export default function ReportsPage() {
                                                 {row.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate">
+                                        <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate italic">
                                             {row.notes || '-'}
                                         </td>
                                     </tr>
