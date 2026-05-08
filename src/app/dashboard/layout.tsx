@@ -115,11 +115,7 @@ const groupedMenus: SidebarGroup[] = [
         groupName: 'Kegiatan & Pembinaan',
         groupIcon: BookOpen,
         links: [
-            { name: 'Jadwal Tahsin', href: '/dashboard/kegiatan/tahsin', icon: BookMarked },
-            { name: 'Jadwal Taklim', href: '/dashboard/kegiatan/taklim', icon: CalendarDays },
-            { name: 'Kegiatan Harian', href: '/dashboard/kegiatan/harian', icon: ListChecks },
-            { name: 'Presensi', href: '/dashboard/kegiatan/presensi', icon: ClipboardList },
-            { name: 'Dokumentasi', href: '/dashboard/kegiatan/dokumentasi', icon: Camera },
+            { name: 'Dashboard Kegiatan', href: '/dashboard/kegiatan', icon: BookOpen },
         ],
     },
     {
@@ -228,7 +224,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const accessibleMenus = user.accessible_menus || [];
         const isAdmin = role === 'Admin YBM';
 
-        const hasAccess = (href: string) => isAdmin || accessibleMenus.includes(href);
+        const hasAccess = (href: string) => {
+            if (isAdmin) return true;
+            if (accessibleMenus.includes(href)) return true;
+            if (href === '/dashboard/kegiatan') {
+                return accessibleMenus.some((m: string) => m.startsWith('/dashboard/kegiatan'));
+            }
+            return false;
+        };
 
         const allowedFlat = flatLinks.filter(l => hasAccess(l.href));
         const allGroupedLinks = groupedMenus.flatMap(g => g.links).filter(l => hasAccess(l.href));
@@ -274,7 +277,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userRole = user.role as string;
     const accessibleMenus = user.accessible_menus || [];
     const isAdmin = userRole === 'Admin YBM';
-    const hasAccess = (href: string) => isAdmin || accessibleMenus.includes(href);
+    const hasAccess = (href: string) => {
+        if (isAdmin) return true;
+        if (accessibleMenus.includes(href)) return true;
+        if (href === '/dashboard/kegiatan') {
+            return accessibleMenus.some((m: string) => m.startsWith('/dashboard/kegiatan'));
+        }
+        return false;
+    };
 
     const allowedSidebarLinks = flatLinks.filter(l => hasAccess(l.href));
     const allowedGroupedMenus = groupedMenus.map(g => ({
