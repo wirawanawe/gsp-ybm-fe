@@ -274,6 +274,7 @@ export default function UnifiedKegiatanPage() {
             formData.append('title', uploadTitle);
             formData.append('description', uploadDesc);
             formData.append('activity_id', selectedActivity.id.toString());
+            formData.append('activity_date', attendanceDate);
             uploadFiles.forEach(f => formData.append('files', f));
 
             const res = await authFetch(apiUrl('/api/documentation'), { method: 'POST', body: formData });
