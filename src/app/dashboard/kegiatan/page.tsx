@@ -43,6 +43,7 @@ type Documentation = {
     file_url: string;
     file_type: 'photo' | 'video';
     activity_id: number | null;
+    attendance_id: number | null;
     created_at: string;
 };
 
@@ -89,7 +90,9 @@ export default function UnifiedKegiatanPage() {
     const [uploadFiles, setUploadFiles] = useState<File[]>([]);
     const [uploadTitle, setUploadTitle] = useState('');
     const [uploadDesc, setUploadDesc] = useState('');
+    const [uploadAttendanceId, setUploadAttendanceId] = useState<number | null>(null);
     const [uploadingDocs, setUploadingDocs] = useState(false);
+    const [selectedParticipantId, setSelectedParticipantId] = useState<number | null>(null);
 
     // --- Data Fetching ---
 
@@ -274,6 +277,7 @@ export default function UnifiedKegiatanPage() {
             formData.append('title', uploadTitle);
             formData.append('description', uploadDesc);
             formData.append('activity_id', selectedActivity.id.toString());
+            if (uploadAttendanceId) formData.append('attendance_id', uploadAttendanceId.toString());
             uploadFiles.forEach(f => formData.append('files', f));
 
             const res = await authFetch(apiUrl('/api/documentation'), { method: 'POST', body: formData });
@@ -281,6 +285,7 @@ export default function UnifiedKegiatanPage() {
                 setIsUploadOpen(false);
                 setUploadFiles([]);
                 setUploadDesc('');
+                setUploadAttendanceId(null);
                 fetchDocs();
             }
         } catch {
@@ -476,7 +481,10 @@ export default function UnifiedKegiatanPage() {
                                     <Save size={18} /> {savingAttendance ? 'Menyimpan...' : 'Simpan Presensi'}
                                 </button>
                                 <button 
-                                    onClick={() => setIsUploadOpen(true)}
+                                    onClick={() => {
+                                        setUploadAttendanceId(selectedParticipantId);
+                                        setIsUploadOpen(true);
+                                    }}
                                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all"
                                 >
                                     <Upload size={18} /> Unggah Dokumentasi
@@ -564,7 +572,11 @@ export default function UnifiedKegiatanPage() {
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-50">
                                                     {participants.map((p, idx) => (
-                                                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                                                        <tr 
+                                                            key={idx} 
+                                                            onClick={() => setSelectedParticipantId(p.id === selectedParticipantId ? null : (p.id || null))}
+                                                            className={`hover:bg-slate-50/50 transition-colors group cursor-pointer ${selectedParticipantId === p.id ? 'bg-emerald-50/80 ring-2 ring-inset ring-emerald-500' : ''}`}
+                                                        >
                                                             <td className="px-6 py-4 text-slate-400 font-medium">{idx + 1}</td>
                                                             <td className="px-6 py-4">
                                                                 <div className="font-bold text-slate-800 leading-tight">{p.participant_name}</div>
@@ -575,7 +587,8 @@ export default function UnifiedKegiatanPage() {
                                                                     {(['Hadir', 'Tidak Hadir', 'Izin'] as const).map(st => (
                                                                         <button 
                                                                             key={st}
-                                                                            onClick={() => {
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
                                                                                 const next = [...participants];
                                                                                 next[idx].status = st;
                                                                                 setParticipants(next);
@@ -589,7 +602,10 @@ export default function UnifiedKegiatanPage() {
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <button 
-                                                                    onClick={() => setParticipants(p => p.filter((_, i) => i !== idx))}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setParticipants(p => p.filter((_, i) => i !== idx));
+                                                                    }}
                                                                     className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                                                 >
                                                                     <Trash2 size={16} />
@@ -617,8 +633,18 @@ export default function UnifiedKegiatanPage() {
                                                 <p className="text-xs text-slate-500">Galeri foto dan video kegiatan</p>
                                             </div>
                                         </div>
-                                        <div className="text-[10px] font-black uppercase text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
-                                            {docs.length} File
+                                        <div className="flex items-center gap-2">
+                                            {selectedParticipantId && (
+                                                <button 
+                                                    onClick={() => setSelectedParticipantId(null)}
+                                                    className="text-[10px] font-black uppercase text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+                                                >
+                                                    Clear Filter
+                                                </button>
+                                            )}
+                                            <div className="text-[10px] font-black uppercase text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
+                                                {docs.filter(d => !selectedParticipantId || d.attendance_id === selectedParticipantId).length} File
+                                            </div>
                                         </div>
                                     </div>
 
@@ -637,7 +663,9 @@ export default function UnifiedKegiatanPage() {
                                             </div>
                                         ) : (
                                             <div className="grid grid-cols-2 gap-4">
-                                                {docs.map(doc => (
+                                                {docs
+                                                    .filter(doc => !selectedParticipantId || doc.attendance_id === selectedParticipantId)
+                                                    .map(doc => (
                                                     <div 
                                                         key={doc.id}
                                                         onClick={() => { setSelectedDoc(doc); setIsViewerOpen(true); }}
@@ -843,6 +871,19 @@ export default function UnifiedKegiatanPage() {
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Judul Dokumentasi</label>
                                 <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Terhubung Dengan Peserta (Opsional)</label>
+                                <select 
+                                    value={uploadAttendanceId || ''} 
+                                    onChange={e => setUploadAttendanceId(e.target.value ? Number(e.target.value) : null)}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                >
+                                    <option value="">-- Umum (Tidak Terhubung ke Peserta) --</option>
+                                    {participants.filter(p => p.id).map(p => (
+                                        <option key={p.id} value={p.id}>{p.participant_name} ({p.participant_type})</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Keterangan (Opsional)</label>
