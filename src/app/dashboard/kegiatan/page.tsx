@@ -79,6 +79,7 @@ export default function UnifiedKegiatanPage() {
     const [savingAttendance, setSavingAttendance] = useState(false);
     const [newParticipantName, setNewParticipantName] = useState('');
     const [newParticipantType, setNewParticipantType] = useState('Umum');
+    const [isAttendanceSaved, setIsAttendanceSaved] = useState(false);
 
     // Documentation States
     const [docs, setDocs] = useState<Documentation[]>([]);
@@ -120,6 +121,7 @@ export default function UnifiedKegiatanPage() {
                 notes: r.notes || '',
             }));
             setParticipants(existing);
+            setIsAttendanceSaved(existing.length > 0);
         } catch (e) {
             console.error('Failed to fetch attendance', e);
         } finally {
@@ -131,7 +133,7 @@ export default function UnifiedKegiatanPage() {
         if (!selectedActivity) return;
         setLoadingDocs(true);
         try {
-            const res = await authFetch(apiUrl(`/api/documentation?activity_id=${selectedActivity.id}`));
+            const res = await authFetch(apiUrl(`/api/documentation?activity_id=${selectedActivity.id}&activity_date=${attendanceDate}`));
             const data = await res.json();
             setDocs(data);
         } catch (e) {
@@ -139,7 +141,7 @@ export default function UnifiedKegiatanPage() {
         } finally {
             setLoadingDocs(false);
         }
-    }, [selectedActivity]);
+    }, [selectedActivity, attendanceDate]);
 
     useEffect(() => {
         fetchActivities();
@@ -228,6 +230,7 @@ export default function UnifiedKegiatanPage() {
         if (!newParticipantName.trim()) return;
         setParticipants(p => [...p, { participant_name: newParticipantName.trim(), participant_type: newParticipantType, status: 'Hadir', notes: '' }]);
         setNewParticipantName('');
+        setIsAttendanceSaved(false);
     };
 
     const handleSaveAttendance = async () => {
@@ -478,7 +481,9 @@ export default function UnifiedKegiatanPage() {
                                 </button>
                                 <button 
                                     onClick={() => setIsUploadOpen(true)}
-                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all"
+                                    disabled={!isAttendanceSaved}
+                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 disabled:shadow-none"
+                                    title={!isAttendanceSaved ? "Simpan presensi terlebih dahulu sebelum mengunggah dokumentasi" : ""}
                                 >
                                     <Upload size={18} /> Unggah Dokumentasi
                                 </button>
@@ -580,6 +585,7 @@ export default function UnifiedKegiatanPage() {
                                                                                 const next = [...participants];
                                                                                 next[idx].status = st;
                                                                                 setParticipants(next);
+                                                                                setIsAttendanceSaved(false);
                                                                             }}
                                                                             className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${p.status === st ? STATUS_COLORS[st] : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
                                                                         >
@@ -590,7 +596,10 @@ export default function UnifiedKegiatanPage() {
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <button 
-                                                                    onClick={() => setParticipants(p => p.filter((_, i) => i !== idx))}
+                                                                    onClick={() => {
+                                                                        setParticipants(p => p.filter((_, i) => i !== idx));
+                                                                        setIsAttendanceSaved(false);
+                                                                    }}
                                                                     className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                                                 >
                                                                     <Trash2 size={16} />
