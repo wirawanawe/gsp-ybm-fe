@@ -80,6 +80,12 @@ export default function UnifiedKegiatanPage() {
     const [newParticipantName, setNewParticipantName] = useState('');
     const [newParticipantType, setNewParticipantType] = useState('Umum');
     const [isAttendanceSaved, setIsAttendanceSaved] = useState(false);
+    const [presenceCategories, setPresenceCategories] = useState<any[]>([]);
+
+    // Autocomplete States
+    const [dbPatients, setDbPatients] = useState<any[]>([]);
+    const [dbVisitors, setDbVisitors] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Documentation States
     const [docs, setDocs] = useState<Documentation[]>([]);
@@ -104,6 +110,21 @@ export default function UnifiedKegiatanPage() {
             console.error('Failed to fetch activities', e);
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const fetchPresenceCategories = useCallback(async () => {
+        try {
+            const res = await authFetch(apiUrl('/api/presence-categories?is_active=true'));
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setPresenceCategories(data);
+                if (data.length > 0) {
+                    setNewParticipantType(data[0].name);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch presence categories', e);
         }
     }, []);
 
@@ -145,7 +166,22 @@ export default function UnifiedKegiatanPage() {
 
     useEffect(() => {
         fetchActivities();
-    }, [fetchActivities]);
+        fetchPresenceCategories();
+    }, [fetchActivities, fetchPresenceCategories]);
+
+    useEffect(() => {
+        if (newParticipantType === 'Pasien' && dbPatients.length === 0) {
+            authFetch(apiUrl('/api/patients'))
+                .then(r => r.json())
+                .then(data => setDbPatients(Array.isArray(data) ? data : []))
+                .catch(e => console.error(e));
+        } else if (newParticipantType === 'Penunggu' && dbVisitors.length === 0) {
+            authFetch(apiUrl('/api/visitors'))
+                .then(r => r.json())
+                .then(data => setDbVisitors(Array.isArray(data) ? data : []))
+                .catch(e => console.error(e));
+        }
+    }, [newParticipantType, dbPatients.length, dbVisitors.length]);
 
     useEffect(() => {
         if (activeTab === 'manage') {
@@ -516,22 +552,78 @@ export default function UnifiedKegiatanPage() {
                                     </div>
 
                                     <div className="p-4 bg-emerald-50/50 border-b border-emerald-100 flex items-center justify-between gap-4">
-                                        <div className="flex-1 flex gap-2">
-                                            <input 
-                                                value={newParticipantName}
-                                                onChange={(e) => setNewParticipantName(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
-                                                placeholder="Nama Peserta..."
-                                                className="flex-1 bg-white border border-emerald-100 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                            />
+                                        <div className="flex-1 flex gap-2 relative">
+                                            <div className="relative flex-1">
+                                                <input 
+                                                    value={newParticipantName}
+                                                    onChange={(e) => {
+                                                        setNewParticipantName(e.target.value);
+                                                        setShowSuggestions(true);
+                                                    }}
+                                                    onFocus={() => setShowSuggestions(true)}
+                                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
+                                                    placeholder="Nama Peserta..."
+                                                    className="w-full bg-white border border-emerald-100 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                />
+                                                {showSuggestions && newParticipantType === 'Pasien' && (
+                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 shadow-xl rounded-xl max-h-60 overflow-y-auto z-50">
+                                                        {dbPatients.filter(p => p.name.toLowerCase().includes(newParticipantName.toLowerCase())).map(p => (
+                                                            <div 
+                                                                key={p.id} 
+                                                                className="px-4 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700 flex flex-col border-b border-slate-50 last:border-0"
+                                                                onClick={() => {
+                                                                    setNewParticipantName(p.name);
+                                                                    setShowSuggestions(false);
+                                                                }}
+                                                            >
+                                                                <span className="font-bold">{p.name}</span>
+                                                                <span className="text-xs text-slate-400">NIK: {p.nik || '-'}</span>
+                                                            </div>
+                                                        ))}
+                                                        {dbPatients.filter(p => p.name.toLowerCase().includes(newParticipantName.toLowerCase())).length === 0 && (
+                                                            <div className="px-4 py-3 text-sm text-slate-500 text-center">Pasien tidak ditemukan</div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {showSuggestions && newParticipantType === 'Penunggu' && (
+                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 shadow-xl rounded-xl max-h-60 overflow-y-auto z-50">
+                                                        {dbVisitors.filter(v => v.name.toLowerCase().includes(newParticipantName.toLowerCase())).map(v => (
+                                                            <div 
+                                                                key={v.id} 
+                                                                className="px-4 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700 flex flex-col border-b border-slate-50 last:border-0"
+                                                                onClick={() => {
+                                                                    setNewParticipantName(v.name);
+                                                                    setShowSuggestions(false);
+                                                                }}
+                                                            >
+                                                                <span className="font-bold">{v.name}</span>
+                                                                <span className="text-xs text-slate-400">NIK: {v.nik || '-'}</span>
+                                                            </div>
+                                                        ))}
+                                                        {dbVisitors.filter(v => v.name.toLowerCase().includes(newParticipantName.toLowerCase())).length === 0 && (
+                                                            <div className="px-4 py-3 text-sm text-slate-500 text-center">Penunggu tidak ditemukan</div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                             <select 
                                                 value={newParticipantType}
                                                 onChange={(e) => setNewParticipantType(e.target.value)}
                                                 className="bg-white border border-emerald-100 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                                             >
-                                                <option>Umum</option>
-                                                <option>Pasien</option>
-                                                <option>Penunggu</option>
+                                                {presenceCategories.map((cat) => (
+                                                    <option key={cat.id} value={cat.name}>
+                                                        {cat.name}
+                                                    </option>
+                                                ))}
+                                                {presenceCategories.length === 0 && (
+                                                    <>
+                                                        <option>Umum</option>
+                                                        <option>Pasien</option>
+                                                        <option>Penunggu</option>
+                                                    </>
+                                                )}
                                             </select>
                                             <button 
                                                 onClick={addParticipant}
