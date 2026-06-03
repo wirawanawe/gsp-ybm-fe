@@ -34,9 +34,16 @@ type AmbulanceUsageRow = {
     vehicle_model: string;
     destination: string;
     patient_name: string | null;
+    registration_number?: string | null;
     departure_time: string;
     return_time: string | null;
     status: string;
+    patients?: Array<{
+        id?: number;
+        patient_name: string;
+        registration_number: string;
+        destination: string;
+    }>;
 };
 
 type ActivityReportRow = {
@@ -683,8 +690,41 @@ export default function ReportsPage() {
                                                 <div className="font-semibold text-slate-800">{row.plate_number}</div>
                                                 <div className="text-xs text-slate-500">{row.vehicle_model}</div>
                                             </td>
-                                            <td className="px-6 py-4 text-slate-700">{row.destination}</td>
-                                            <td className="px-6 py-4 text-slate-700">{row.patient_name || '-'}</td>
+                                            <td className="px-6 py-4 text-slate-700">
+                                                {row.patients && row.patients.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {row.patients.map((p, idx) => (
+                                                            <div key={idx} className="text-sm">
+                                                                <span className="text-slate-800">{p.destination || row.destination || '-'}</span>
+                                                                {row.patients!.length > 1 && (
+                                                                    <span className="text-xs text-slate-400 block font-normal">({p.patient_name})</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    row.destination
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700">
+                                                {row.patients && row.patients.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {row.patients.map((p, idx) => (
+                                                            <div key={idx} className="text-sm">
+                                                                <span className="font-semibold text-slate-800">{p.patient_name}</span>
+                                                                <span className="text-xs text-slate-500 block">Reg: {p.registration_number || '-'}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <div className="font-semibold text-slate-800">{row.patient_name || '-'}</div>
+                                                        {row.registration_number && (
+                                                            <div className="text-xs text-slate-500">Reg: {row.registration_number}</div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-sm">{formatDateTime(row.departure_time)}</td>
                                             <td className="px-6 py-4 text-sm">{formatDateTime(row.return_time)}</td>
                                             <td className="px-6 py-4">
