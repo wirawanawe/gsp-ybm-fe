@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn } from 'lucide-react';
+import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiUrl, authFetch } from '@/lib/api';
@@ -50,6 +50,83 @@ type ActivityReportRow = {
     notes: string | null;
 };
 
+function Pagination({
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    onPageChange
+}: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    onPageChange: (page: number) => void;
+}) {
+    if (totalPages <= 1) return null;
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+        <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm shrink-0">
+            <span className="text-slate-500">
+                Menampilkan <span className="font-semibold text-slate-700">{startItem}</span> - <span className="font-semibold text-slate-700">{endItem}</span> dari <span className="font-semibold text-slate-700">{totalItems}</span> data
+            </span>
+            <div className="flex items-center gap-1">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={currentPage === 1}
+                    onClick={() => onPageChange(currentPage - 1)}
+                >
+                    <ChevronLeft size={16} />
+                </Button>
+                {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
+                    if (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                    ) {
+                        return (
+                            <Button
+                                key={page}
+                                variant={currentPage === page ? 'default' : 'outline'}
+                                size="sm"
+                                className={`h-8 w-8 p-0 text-xs font-semibold ${
+                                    currentPage === page
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
+                                        : ''
+                                }`}
+                                onClick={() => onPageChange(page)}
+                            >
+                                {page}
+                            </Button>
+                        );
+                    }
+                    if (
+                        (page === 2 && currentPage > 3) ||
+                        (page === totalPages - 1 && currentPage < totalPages - 2)
+                    ) {
+                        return <span key={page} className="text-slate-400 px-1 text-xs select-none">...</span>;
+                    }
+                    return null;
+                })}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={currentPage === totalPages}
+                    onClick={() => onPageChange(currentPage + 1)}
+                >
+                    <ChevronRight size={16} />
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 export default function ReportsPage() {
     const [stats, setStats] = useState<OccupancyStats>({
         totalPatients: 0,
@@ -58,8 +135,15 @@ export default function ReportsPage() {
         deceasedPatients: 0,
         referredPatients: 0
     });
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    const [patientStartDate, setPatientStartDate] = useState('');
+    const [patientEndDate, setPatientEndDate] = useState('');
+    const [ambulanceStartDate, setAmbulanceStartDate] = useState('');
+    const [ambulanceEndDate, setAmbulanceEndDate] = useState('');
+    const [activityStartDate, setActivityStartDate] = useState('');
+    const [activityEndDate, setActivityEndDate] = useState('');
+    const [patientDateType, setPatientDateType] = useState('');
+    const [ambulanceDateType, setAmbulanceDateType] = useState('');
+
     const [finalStatusFilter, setFinalStatusFilter] = useState<string>('');
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
@@ -68,6 +152,23 @@ export default function ReportsPage() {
     const [activityId, setActivityId] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState<'pasien' | 'ambulans' | 'kegiatan'>('pasien');
+    const [patientPage, setPatientPage] = useState(1);
+    const [ambulancePage, setAmbulancePage] = useState(1);
+    const [activityPage, setActivityPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
+    useEffect(() => {
+        setPatientPage(1);
+    }, [patientStartDate, patientEndDate, finalStatusFilter, patientDateType]);
+
+    useEffect(() => {
+        setAmbulancePage(1);
+    }, [ambulanceStartDate, ambulanceEndDate, ambulanceDateType]);
+
+    useEffect(() => {
+        setActivityPage(1);
+    }, [activityStartDate, activityEndDate, activityId]);
 
     const fetchActivities = async () => {
         try {
@@ -100,36 +201,78 @@ export default function ReportsPage() {
         }
     };
 
-    const fetchReports = async () => {
+    const fetchPatientReport = async () => {
         setLoading(true);
         setError('');
         try {
-            if (startDate && endDate && startDate > endDate) {
+            if (patientStartDate && patientEndDate && patientStartDate > patientEndDate) {
                 setError('Tanggal awal tidak boleh lebih besar dari tanggal akhir');
                 setPatientInOut([]);
+                setLoading(false);
+                return;
+            }
+
+            const params = new URLSearchParams();
+            if (patientStartDate) params.append('start_date', patientStartDate);
+            if (patientEndDate) params.append('end_date', patientEndDate);
+            if (finalStatusFilter) params.append('final_status', finalStatusFilter);
+            if (patientDateType) params.append('date_type', patientDateType);
+
+            const res = await authFetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`));
+            const data = await res.json();
+            setPatientInOut(Array.isArray(data) ? data : []);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAmbulanceReport = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            if (ambulanceStartDate && ambulanceEndDate && ambulanceStartDate > ambulanceEndDate) {
+                setError('Tanggal awal tidak boleh lebih besar dari tanggal akhir');
                 setAmbulanceUsage([]);
+                setLoading(false);
+                return;
+            }
+
+            const params = new URLSearchParams();
+            if (ambulanceStartDate) params.append('start_date', ambulanceStartDate);
+            if (ambulanceEndDate) params.append('end_date', ambulanceEndDate);
+            if (ambulanceDateType) params.append('date_type', ambulanceDateType);
+
+            const res = await authFetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`));
+            const data = await res.json();
+            setAmbulanceUsage(Array.isArray(data) ? data : []);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchActivityReport = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            if (activityStartDate && activityEndDate && activityStartDate > activityEndDate) {
+                setError('Tanggal awal tidak boleh lebih besar dari tanggal akhir');
                 setActivityReport([]);
                 setLoading(false);
                 return;
             }
 
             const params = new URLSearchParams();
-            if (startDate) params.append('start_date', startDate);
-            if (endDate) params.append('end_date', endDate);
+            if (activityStartDate) params.append('start_date', activityStartDate);
+            if (activityEndDate) params.append('end_date', activityEndDate);
             if (activityId) params.append('activity_id', activityId);
 
-            const [inOutRes, ambRes, actRes] = await Promise.all([
-                authFetch(apiUrl(`/api/reports/patient-in-out?${params.toString()}`)),
-                authFetch(apiUrl(`/api/reports/ambulance-usage?${params.toString()}`)),
-                authFetch(apiUrl(`/api/reports/activity?${params.toString()}`))
-            ]);
-            const inOutData = await inOutRes.json();
-            const ambData = await ambRes.json();
-            const actData = await actRes.json();
-            
-            setPatientInOut(Array.isArray(inOutData) ? inOutData : []);
-            setAmbulanceUsage(Array.isArray(ambData) ? ambData : []);
-            setActivityReport(Array.isArray(actData) ? actData : []);
+            const res = await authFetch(apiUrl(`/api/reports/activity?${params.toString()}`));
+            const data = await res.json();
+            setActivityReport(Array.isArray(data) ? data : []);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -142,8 +285,22 @@ export default function ReportsPage() {
     }, []);
 
     useEffect(() => {
-        fetchReports();
-    }, [startDate, endDate, finalStatusFilter, activityId]);
+        if (activeTab === 'pasien') {
+            fetchPatientReport();
+        }
+    }, [activeTab, patientStartDate, patientEndDate, finalStatusFilter, patientDateType]);
+
+    useEffect(() => {
+        if (activeTab === 'ambulans') {
+            fetchAmbulanceReport();
+        }
+    }, [activeTab, ambulanceStartDate, ambulanceEndDate, ambulanceDateType]);
+
+    useEffect(() => {
+        if (activeTab === 'kegiatan') {
+            fetchActivityReport();
+        }
+    }, [activeTab, activityStartDate, activityEndDate, activityId]);
 
     const formatDateTime = (dt: string | null) => {
         if (!dt) return '-';
@@ -160,18 +317,19 @@ export default function ReportsPage() {
         });
     };
 
-    const buildDateQuery = () => {
-        const params = new URLSearchParams();
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
-        if (finalStatusFilter) params.append('final_status', finalStatusFilter);
-        if (activityId) params.append('activity_id', activityId);
-        return params.toString();
-    };
-
-    const downloadReport = async (path: string, filenamePrefix: string, useQuery: boolean = true) => {
+    const downloadReport = async (
+        path: string,
+        filenamePrefix: string,
+        paramsObj?: { start_date?: string; end_date?: string; [key: string]: any }
+    ) => {
         try {
-            const qs = useQuery ? buildDateQuery() : '';
+            const params = new URLSearchParams();
+            if (paramsObj) {
+                Object.entries(paramsObj).forEach(([key, val]) => {
+                    if (val) params.append(key, val);
+                });
+            }
+            const qs = params.toString();
             const url = apiUrl(`/api/reports/${path}${qs ? `?${qs}` : ''}`);
             const res = await authFetch(url);
             if (!res.ok) {
@@ -181,11 +339,14 @@ export default function ReportsPage() {
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
+            
+            const start = paramsObj?.start_date;
+            const end = paramsObj?.end_date;
             const suffix =
-                useQuery && startDate && endDate
-                    ? (startDate === endDate
-                        ? startDate
-                        : `${startDate}_sampai_${endDate}`)
+                start && end
+                    ? (start === end
+                        ? start
+                        : `${start}_sampai_${end}`)
                     : 'semua-data';
             a.download = `${filenamePrefix}-${suffix}.xlsx`;
             document.body.appendChild(a);
@@ -196,6 +357,10 @@ export default function ReportsPage() {
             alert(err instanceof Error ? err.message : 'Gagal mengunduh laporan');
         }
     };
+
+    const paginatedPatientInOut = patientInOut.slice((patientPage - 1) * ITEMS_PER_PAGE, patientPage * ITEMS_PER_PAGE);
+    const paginatedAmbulanceUsage = ambulanceUsage.slice((ambulancePage - 1) * ITEMS_PER_PAGE, ambulancePage * ITEMS_PER_PAGE);
+    const paginatedActivityReport = activityReport.slice((activityPage - 1) * ITEMS_PER_PAGE, activityPage * ITEMS_PER_PAGE);
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)]">
@@ -210,47 +375,6 @@ export default function ReportsPage() {
                             {error}
                         </p>
                     )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <Calendar size={18} className="text-slate-500 shrink-0" />
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={startDate}
-                                onChange={e => setStartDate(e.target.value)}
-                                className="w-full min-w-0 sm:w-36"
-                            />
-                            <span className="text-xs text-slate-500">s.d</span>
-                            <Input
-                                type="date"
-                                value={endDate}
-                                onChange={e => setEndDate(e.target.value)}
-                                className="w-full min-w-0 sm:w-36"
-                            />
-                        </div>
-                    </div>
-                    <select
-                        className="h-10 px-3 rounded-md border border-slate-200 text-sm"
-                        value={finalStatusFilter}
-                        onChange={e => setFinalStatusFilter(e.target.value)}
-                    >
-                        <option value="">Status Pasien</option>
-                        <option value="Sembuh">Sembuh / Pulang</option>
-                        <option value="Rujukan Lanjut">Rujukan Lanjut</option>
-                        <option value="Meninggal">Meninggal</option>
-                        <option value="Masih dirawat">Masih dirawat</option>
-                    </select>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 font-medium shrink-0"
-                        onClick={() => { fetchStats(); fetchReports(); }}
-                        disabled={loading}
-                    >
-                        <FileSpreadsheet size={18} className="mr-2 text-emerald-600" />
-                        Terapkan
-                    </Button>
                 </div>
             </div>
 
@@ -294,243 +418,410 @@ export default function ReportsPage() {
                 </div>
             </div>
 
+            {/* Tabs */}
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit mb-6 shrink-0">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('pasien')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        activeTab === 'pasien'
+                            ? 'bg-white text-emerald-700 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-800'
+                    }`}
+                >
+                    <Users size={16} />
+                    Pasien
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('ambulans')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        activeTab === 'ambulans'
+                            ? 'bg-white text-emerald-700 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-800'
+                    }`}
+                >
+                    <Ambulance size={16} />
+                    Ambulans
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('kegiatan')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        activeTab === 'kegiatan'
+                            ? 'bg-white text-emerald-700 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-800'
+                    }`}
+                >
+                    <Calendar size={16} />
+                    Kegiatan
+                </button>
+            </div>
+
             {/* Laporan Pasien Masuk & Keluar */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <LogIn size={20} className="text-emerald-600" />
-                        <h2 className="font-bold text-slate-800">
-                            Laporan Pasien Masuk & Keluar
-                            {startDate && endDate ? (
-                                <> - {startDate === endDate
-                                    ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                                    : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
-                            ) : (
-                                <span> - Semua data</span>
-                            )}
-                        </h2>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={patientInOut.length === 0}
-                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
-                        onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien')}
-                    >
-                        <Download size={16} />
-                        Download .xlsx
-                    </Button>
-                </div>
-                <div className="overflow-x-auto">
-                    {loading ? (
-                        <div className="p-8 text-center text-slate-500">Memuat...</div>
-                    ) : patientInOut.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500">Tidak ada data pasien masuk/keluar pada tanggal ini.</div>
-                    ) : (
-                        <table className="w-full text-left min-w-[640px] sm:min-w-0">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kamar / Bed</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Masuk</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Keluar</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Deskripsi</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status Akhir</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {patientInOut.map(row => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50">
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-slate-800">{row.patient_name}</div>
-                                            <div className="text-xs text-slate-500">{row.registration_number}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-700">
-                                            {row.room_number || '-'} / Bed {row.bed_number || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">{formatDateTime(row.check_in_date)}</td>
-                                        <td className="px-6 py-4 text-sm">{formatDateTime(row.check_out_date)}</td>
-                                        <td className="px-6 py-4 text-sm">
-                                            {row.final_status === 'Transfer' ? (
-                                                <span className="text-xs text-slate-700" title="Alasan pindah">
-                                                    {row.transfer_reason || '-'}
-                                                </span>
-                                            ) : (row.final_status === 'Rujukan Lanjut' || row.final_status === 'Sembuh' || row.final_status === 'Meninggal') && row.departure_photo_path ? (
-                                                <a
-                                                    href={apiUrl(`/uploads/${row.departure_photo_path}`)}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-emerald-700 hover:text-emerald-900 underline text-xs"
-                                                >
-                                                    Lihat Dokumen Kepulangan
-                                                </a>
-                                            ) : (
-                                                <span className="text-xs text-slate-400">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.final_status === 'Sembuh' ? 'bg-emerald-100 text-emerald-700' :
-                                                row.final_status === 'Rujukan Lanjut' ? 'bg-amber-100 text-amber-700' :
-                                                    row.final_status === 'Meninggal' ? 'bg-rose-100 text-rose-700' :
-                                                        'bg-slate-100 text-slate-600'
-                                                }`}>
-                                                {row.final_status || 'Masih dirawat'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            </div>
-
-            {/* Laporan Penggunaan Ambulans */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <Ambulance size={20} className="text-emerald-600" />
-                        <h2 className="font-bold text-slate-800">
-                            Laporan Penggunaan Ambulans
-                            {startDate && endDate ? (
-                                <> - {startDate === endDate
-                                    ? new Date(startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                                    : `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} s.d ${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`}</>
-                            ) : (
-                                <span> - Semua data</span>
-                            )}
-                        </h2>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={ambulanceUsage.length === 0}
-                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
-                        onClick={() => downloadReport('ambulance-usage/export', 'laporan-ambulans')}
-                    >
-                        <Download size={16} />
-                        Download .xlsx
-                    </Button>
-                </div>
-                <div className="overflow-x-auto">
-                    {loading ? (
-                        <div className="p-8 text-center text-slate-500">Memuat...</div>
-                    ) : ambulanceUsage.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500">Tidak ada penggunaan ambulans pada tanggal ini.</div>
-                    ) : (
-                        <table className="w-full text-left min-w-[640px] sm:min-w-0">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Ambulans</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tujuan</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Berangkat</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kembali</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {ambulanceUsage.map(row => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50">
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-slate-800">{row.plate_number}</div>
-                                            <div className="text-xs text-slate-500">{row.vehicle_model}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-700">{row.destination}</td>
-                                        <td className="px-6 py-4 text-slate-700">{row.patient_name || '-'}</td>
-                                        <td className="px-6 py-4 text-sm">{formatDateTime(row.departure_time)}</td>
-                                        <td className="px-6 py-4 text-sm">{formatDateTime(row.return_time)}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.status === 'In-Journey' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                                                }`}>
-                                                {row.status === 'In-Journey' ? 'Dalam Perjalanan' : 'Selesai'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            </div>
-
-            {/* Laporan Kegiatan */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
-                        <div className="flex items-center gap-2 min-w-fit">
-                            <Calendar size={20} className="text-emerald-600" />
-                            <h2 className="font-bold text-slate-800">
-                                Laporan Kegiatan & Presensi
+            {activeTab === 'pasien' && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <LogIn size={20} className="text-emerald-600 shrink-0" />
+                            <h2 className="font-bold text-slate-800 truncate">
+                                Laporan Pasien Masuk & Keluar
+                                {patientStartDate && patientEndDate ? (
+                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm">
+                                        {' '} ({patientStartDate === patientEndDate
+                                            ? formatDateOnly(patientStartDate)
+                                            : `${formatDateOnly(patientStartDate)} - ${formatDateOnly(patientEndDate)}`})
+                                    </span>
+                                ) : (
+                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm"> - Semua data</span>
+                                )}
                             </h2>
                         </div>
-                        <select 
-                            value={activityId}
-                            onChange={(e) => setActivityId(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all min-w-[200px]"
-                        >
-                            <option value="">Semua Kegiatan</option>
-                            {activities.map(act => (
-                                <option key={act.id} value={act.id}>{act.title}</option>
-                            ))}
-                        </select>
+                        <div className="flex flex-wrap items-center gap-3 shrink-0">
+                            <select
+                                className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                value={patientDateType}
+                                onChange={e => setPatientDateType(e.target.value)}
+                            >
+                                <option value="">Masuk & Keluar</option>
+                                <option value="check_in">Waktu Masuk</option>
+                                <option value="check_out">Waktu Keluar</option>
+                            </select>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <Calendar size={16} className="text-slate-500 shrink-0" />
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        type="date"
+                                        value={patientStartDate}
+                                        onChange={e => setPatientStartDate(e.target.value)}
+                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                    />
+                                    <span className="text-xs text-slate-500 font-medium">s.d</span>
+                                    <Input
+                                        type="date"
+                                        value={patientEndDate}
+                                        onChange={e => setPatientEndDate(e.target.value)}
+                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                    />
+                                </div>
+                            </div>
+                            <select
+                                className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                value={finalStatusFilter}
+                                onChange={e => setFinalStatusFilter(e.target.value)}
+                            >
+                                <option value="">Status Pasien</option>
+                                <option value="Sembuh">Sembuh / Pulang</option>
+                                <option value="Rujukan Lanjut">Rujukan Lanjut</option>
+                                <option value="Meninggal">Meninggal</option>
+                                <option value="Masih dirawat">Masih dirawat</option>
+                            </select>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={patientInOut.length === 0}
+                                className="h-9 border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 font-semibold text-xs shrink-0"
+                                onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien', { start_date: patientStartDate, end_date: patientEndDate, final_status: finalStatusFilter, date_type: patientDateType })}
+                            >
+                                <Download size={15} />
+                                Download .xlsx
+                            </Button>
+                        </div>
                     </div>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={activityReport.length === 0}
-                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
-                        onClick={() => downloadReport('activity/export', 'laporan-kegiatan', true)}
-                    >
-                        <Download size={16} />
-                        Download .xlsx
-                    </Button>
-                </div>
-                <div className="overflow-x-auto">
-                    {loading ? (
-                        <div className="p-8 text-center text-slate-500">Memuat...</div>
-                    ) : activityReport.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500">Tidak ada data kegiatan pada tanggal ini.</div>
-                    ) : (
-                        <table className="w-full text-left min-w-[640px] sm:min-w-0">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tanggal</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kegiatan</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Peserta</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kategori</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
-                                    <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {activityReport.map(row => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50">
-                                        <td className="px-6 py-4 text-sm whitespace-nowrap">
-                                            {formatDateOnly(row.attendance_date)}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-slate-800">{row.activity_title}</div>
-                                            <div className="text-xs text-slate-500">{row.activity_type}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-700">{row.participant_name}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-600">{row.participant_type}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                                }`}>
-                                                {row.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate italic">
-                                            {row.notes || '-'}
-                                        </td>
+                    <div className="overflow-x-auto">
+                        {loading ? (
+                            <div className="p-8 text-center text-slate-500">Memuat...</div>
+                        ) : patientInOut.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500">Tidak ada data pasien masuk/keluar pada tanggal ini.</div>
+                        ) : (
+                            <table className="w-full text-left min-w-[640px] sm:min-w-0">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kamar / Bed</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Masuk</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Keluar</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Deskripsi</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status Akhir</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {paginatedPatientInOut.map(row => (
+                                        <tr key={row.id} className="hover:bg-slate-50/50">
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-800">{row.patient_name}</div>
+                                                <div className="text-xs text-slate-500">{row.registration_number}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700">
+                                                {row.room_number || '-'} / Bed {row.bed_number || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm">{formatDateTime(row.check_in_date)}</td>
+                                            <td className="px-6 py-4 text-sm">{formatDateTime(row.check_out_date)}</td>
+                                            <td className="px-6 py-4 text-sm">
+                                                {row.final_status === 'Transfer' ? (
+                                                    <span className="text-xs text-slate-700" title="Alasan pindah">
+                                                        {row.transfer_reason || '-'}
+                                                    </span>
+                                                ) : (row.final_status === 'Rujukan Lanjut' || row.final_status === 'Sembuh' || row.final_status === 'Meninggal') && row.departure_photo_path ? (
+                                                    <a
+                                                        href={apiUrl(`/uploads/${row.departure_photo_path}`)}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-emerald-700 hover:text-emerald-900 underline text-xs"
+                                                    >
+                                                        Lihat Dokumen Kepulangan
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.final_status === 'Sembuh' ? 'bg-emerald-100 text-emerald-700' :
+                                                    row.final_status === 'Rujukan Lanjut' ? 'bg-amber-100 text-amber-700' :
+                                                        row.final_status === 'Meninggal' ? 'bg-rose-100 text-rose-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                    {row.final_status || 'Masih dirawat'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                    <Pagination
+                        currentPage={patientPage}
+                        totalPages={Math.ceil(patientInOut.length / ITEMS_PER_PAGE)}
+                        totalItems={patientInOut.length}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        onPageChange={setPatientPage}
+                    />
                 </div>
-            </div>
+            )}
+
+            {/* Laporan Penggunaan Ambulans */}
+            {activeTab === 'ambulans' && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <Ambulance size={20} className="text-emerald-600 shrink-0" />
+                            <h2 className="font-bold text-slate-800 truncate">
+                                Laporan Penggunaan Ambulans
+                                {ambulanceStartDate && ambulanceEndDate ? (
+                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm">
+                                        {' '} ({ambulanceStartDate === ambulanceEndDate
+                                            ? formatDateOnly(ambulanceStartDate)
+                                            : `${formatDateOnly(ambulanceStartDate)} - ${formatDateOnly(ambulanceEndDate)}`})
+                                    </span>
+                                ) : (
+                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm"> - Semua data</span>
+                                )}
+                            </h2>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 shrink-0">
+                            <select
+                                className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                value={ambulanceDateType}
+                                onChange={e => setAmbulanceDateType(e.target.value)}
+                            >
+                                <option value="">Berangkat & Kembali</option>
+                                <option value="departure">Waktu Berangkat</option>
+                                <option value="return">Waktu Kembali</option>
+                            </select>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <Calendar size={16} className="text-slate-500 shrink-0" />
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        type="date"
+                                        value={ambulanceStartDate}
+                                        onChange={e => setAmbulanceStartDate(e.target.value)}
+                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                    />
+                                    <span className="text-xs text-slate-500 font-medium">s.d</span>
+                                    <Input
+                                        type="date"
+                                        value={ambulanceEndDate}
+                                        onChange={e => setAmbulanceEndDate(e.target.value)}
+                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={ambulanceUsage.length === 0}
+                                className="h-9 border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 font-semibold text-xs shrink-0"
+                                onClick={() => downloadReport('ambulance-usage/export', 'laporan-ambulans', { start_date: ambulanceStartDate, end_date: ambulanceEndDate, date_type: ambulanceDateType })}
+                            >
+                                <Download size={15} />
+                                Download .xlsx
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        {loading ? (
+                            <div className="p-8 text-center text-slate-500">Memuat...</div>
+                        ) : ambulanceUsage.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500">Tidak ada penggunaan ambulans pada tanggal ini.</div>
+                        ) : (
+                            <table className="w-full text-left min-w-[640px] sm:min-w-0">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Ambulans</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tujuan</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Berangkat</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kembali</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {paginatedAmbulanceUsage.map(row => (
+                                        <tr key={row.id} className="hover:bg-slate-50/50">
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-800">{row.plate_number}</div>
+                                                <div className="text-xs text-slate-500">{row.vehicle_model}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700">{row.destination}</td>
+                                            <td className="px-6 py-4 text-slate-700">{row.patient_name || '-'}</td>
+                                            <td className="px-6 py-4 text-sm">{formatDateTime(row.departure_time)}</td>
+                                            <td className="px-6 py-4 text-sm">{formatDateTime(row.return_time)}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.status === 'In-Journey' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                                                    }`}>
+                                                    {row.status === 'In-Journey' ? 'Dalam Perjalanan' : 'Selesai'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                    <Pagination
+                        currentPage={ambulancePage}
+                        totalPages={Math.ceil(ambulanceUsage.length / ITEMS_PER_PAGE)}
+                        totalItems={ambulanceUsage.length}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        onPageChange={setAmbulancePage}
+                    />
+                </div>
+            )}
+
+            {/* Laporan Kegiatan */}
+            {activeTab === 'kegiatan' && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <Calendar size={20} className="text-emerald-600 shrink-0" />
+                            <h2 className="font-bold text-slate-800 truncate">
+                                Laporan Kegiatan & Presensi
+                                {activityStartDate && activityEndDate ? (
+                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm">
+                                        {' '} ({activityStartDate === activityEndDate
+                                            ? formatDateOnly(activityStartDate)
+                                            : `${formatDateOnly(activityStartDate)} - ${formatDateOnly(activityEndDate)}`})
+                                    </span>
+                                ) : (
+                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm"> - Semua data</span>
+                                )}
+                            </h2>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 shrink-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <Calendar size={16} className="text-slate-500 shrink-0" />
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        type="date"
+                                        value={activityStartDate}
+                                        onChange={e => setActivityStartDate(e.target.value)}
+                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                    />
+                                    <span className="text-xs text-slate-500 font-medium">s.d</span>
+                                    <Input
+                                        type="date"
+                                        value={activityEndDate}
+                                        onChange={e => setActivityEndDate(e.target.value)}
+                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                    />
+                                </div>
+                            </div>
+                            <select 
+                                value={activityId}
+                                onChange={(e) => setActivityId(e.target.value)}
+                                className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 min-w-[150px]"
+                            >
+                                <option value="">Semua Kegiatan</option>
+                                {activities.map(act => (
+                                    <option key={act.id} value={act.id}>{act.title}</option>
+                                ))}
+                            </select>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={activityReport.length === 0}
+                                className="h-9 border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 font-semibold text-xs shrink-0"
+                                onClick={() => downloadReport('activity/export', 'laporan-kegiatan', { start_date: activityStartDate, end_date: activityEndDate, activity_id: activityId })}
+                            >
+                                <Download size={15} />
+                                Download .xlsx
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        {loading ? (
+                            <div className="p-8 text-center text-slate-500">Memuat...</div>
+                        ) : activityReport.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500">Tidak ada data kegiatan pada tanggal ini.</div>
+                        ) : (
+                            <table className="w-full text-left min-w-[640px] sm:min-w-0">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tanggal</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kegiatan</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Peserta</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kategori</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {paginatedActivityReport.map(row => (
+                                        <tr key={row.id} className="hover:bg-slate-50/50">
+                                            <td className="px-6 py-4 text-sm whitespace-nowrap">
+                                                {formatDateOnly(row.attendance_date)}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-800">{row.activity_title}</div>
+                                                <div className="text-xs text-slate-500">{row.activity_type}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700">{row.participant_name}</td>
+                                            <td className="px-6 py-4 text-sm text-slate-600">{row.participant_type}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${row.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                                    }`}>
+                                                    {row.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate italic">
+                                                {row.notes || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                    <Pagination
+                        currentPage={activityPage}
+                        totalPages={Math.ceil(activityReport.length / ITEMS_PER_PAGE)}
+                        totalItems={activityReport.length}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        onPageChange={setActivityPage}
+                    />
+                </div>
+            )}
         </div>
     );
 }

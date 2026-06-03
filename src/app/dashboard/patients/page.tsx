@@ -144,6 +144,25 @@ export default function PatientsPage() {
         }
     };
 
+    const handleDeleteDocument = async (docId: number) => {
+        if (!berkasPatient) return;
+        if (!window.confirm('Yakin ingin menghapus berkas ini? Tindakan ini tidak dapat dibatalkan.')) return;
+        try {
+            const res = await authFetch(apiUrl(`/api/patients/${berkasPatient.id}/documents/${docId}`), {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Gagal menghapus berkas');
+            }
+            const docsRes = await authFetch(apiUrl(`/api/patients/${berkasPatient.id}/documents`));
+            const list = await docsRes.json();
+            setDocuments(Array.isArray(list) ? list : []);
+        } catch (err: any) {
+            alert(err.message || 'Gagal menghapus berkas');
+        }
+    };
+
     const hasDocType = (docType: { id: string; label: string }) =>
         documents.some(d =>
             d.document_type === docType.label ||
@@ -418,14 +437,23 @@ export default function PatientsPage() {
                                             documents.map(doc => (
                                                 <div key={doc.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50">
                                                     <span className="font-medium text-slate-700 text-sm">{doc.document_type}</span>
-                                                    <a
-                                                        href={doc.file_path.startsWith('http') ? doc.file_path : `${API_BASE}/${doc.file_path}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-emerald-600 text-xs font-medium hover:underline flex items-center gap-1"
-                                                    >
-                                                        Lihat <Eye size={14} />
-                                                    </a>
+                                                    <div className="flex items-center gap-2">
+                                                        <a
+                                                            href={doc.file_path.startsWith('http') ? doc.file_path : `${API_BASE}/${doc.file_path}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-emerald-600 text-xs font-medium hover:underline flex items-center gap-1"
+                                                        >
+                                                            Lihat <Eye size={14} />
+                                                        </a>
+                                                        <button
+                                                            onClick={() => handleDeleteDocument(doc.id)}
+                                                            className="text-slate-400 hover:text-rose-600 p-1 rounded-full hover:bg-rose-50 transition-colors"
+                                                            title="Hapus Berkas"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ))
                                         )}

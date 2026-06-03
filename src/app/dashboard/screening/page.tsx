@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2, Upload, Printer, Pencil, Save } from 'lucide-react';
+import { Search, CheckCircle, XCircle, FileText, Eye, UserX, Loader2, Upload, Printer, Pencil, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -225,6 +225,24 @@ export default function ScreeningPage() {
         }
     };
 
+    const handleDeleteDocument = async (docId: number) => {
+        if (!selectedPatient) return;
+        if (!window.confirm('Yakin ingin menghapus berkas ini? Tindakan ini tidak dapat dibatalkan.')) return;
+        try {
+            const res = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}/documents/${docId}`), {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Gagal menghapus berkas');
+            }
+            const docsRes = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}/documents`));
+            setDocuments(await docsRes.json());
+        } catch (err: any) {
+            alert(err.message || 'Gagal menghapus berkas');
+        }
+    };
+
     const handleVerification = async (status: string) => {
         if (!selectedPatient) return;
 
@@ -373,7 +391,7 @@ export default function ScreeningPage() {
                                                     </div>
                                                 ) : (
                                                     documents.map(doc => (
-                                                        <div key={doc.id} className="border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-emerald-300 transition-colors group">
+                                                        <div key={doc.id} className="border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-emerald-300 transition-colors group relative">
                                                             <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
                                                                 <FileText size={20} />
                                                             </div>
@@ -382,11 +400,18 @@ export default function ScreeningPage() {
                                                                 <a
                                                                     href={`${API_BASE}/${doc.file_path}`}
                                                                     target="_blank"
-                                                                    className="text-xs text-emerald-600 font-medium hover:underline flex items-center mt-1"
+                                                                    className="text-xs text-emerald-600 font-medium hover:underline flex items-center mt-1 w-fit"
                                                                 >
                                                                     Lihat Berkas <Eye size={12} className="ml-1" />
                                                                 </a>
                                                             </div>
+                                                            <button
+                                                                onClick={() => handleDeleteDocument(doc.id)}
+                                                                className="text-slate-400 hover:text-rose-600 p-1.5 rounded-full hover:bg-rose-50 transition-colors shrink-0"
+                                                                title="Hapus Berkas"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
                                                         </div>
                                                     ))
                                                 )}

@@ -347,13 +347,21 @@ export default function DashboardPage() {
             {/* Patient Stats */}
             <div>
                 <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Ringkasan Pasien</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
                         title="Pasien Aktif"
                         value={summary?.patients?.active ?? 0}
                         subtitle="Sedang dirawat di rumah singgah"
                         icon={Users}
                         color="text-emerald-600"
+                    />
+                    <StatCard
+                        title="Penunggu Aktif"
+                        value={summary?.visitors?.active ?? 0}
+                        subtitle="Mendampingi pasien aktif"
+                        icon={UserCircle2}
+                        color="text-violet-600"
+                        href="/dashboard/visitors"
                     />
                     <StatCard
                         title="Total Pasien Terdaftar"
