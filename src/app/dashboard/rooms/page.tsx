@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BedDouble, CheckCircle, Info, UserPlus, XCircle, ArrowRightLeft } from 'lucide-react';
+import { BedDouble, CheckCircle, Info, UserPlus, XCircle, ArrowRightLeft, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiUrl, authFetch } from '@/lib/api';
 
@@ -30,6 +30,13 @@ export default function RoomsPage() {
     const [addPenungguVisitorId, setAddPenungguVisitorId] = useState<string>('');
     const [addPenungguVisitors, setAddPenungguVisitors] = useState<any[]>([]);
     const [addPenungguSubmitting, setAddPenungguSubmitting] = useState(false);
+    
+    // State for Edit Data Kamar (Stay Log)
+    const [editBed, setEditBed] = useState<any | null>(null);
+    const [editCheckInDate, setEditCheckInDate] = useState<string>('');
+    const [editPatientId, setEditPatientId] = useState<string>('');
+    const [editVisitorId, setEditVisitorId] = useState<string>('');
+    const [editSubmitting, setEditSubmitting] = useState(false);
 
     const fetchRooms = async () => {
         try {
@@ -187,6 +194,37 @@ export default function RoomsPage() {
             alert('Kesalahan jaringan');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleEditCheckIn = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editBed?.stay_log_id || !editPatientId) return;
+        
+        setEditSubmitting(true);
+        try {
+            const res = await authFetch(apiUrl(`/api/rooms/stay/${editBed.stay_log_id}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    patient_id: editPatientId,
+                    visitor_id: editVisitorId || '',
+                    check_in_date: editCheckInDate || undefined
+                })
+            });
+
+            if (res.ok) {
+                alert('Data kamar berhasil diperbarui!');
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(`Gagal: ${data.message}`);
+            }
+        } catch (err) {
+            console.error('Edit checkin err:', err);
+            alert('Kesalahan jaringan');
+        } finally {
+            setEditSubmitting(false);
         }
     };
 
@@ -537,6 +575,83 @@ export default function RoomsPage() {
                 </div>
             )}
 
+            {/* Modal Edit Data Kamar */}
+            {editBed && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2 truncate pr-2">
+                                <Info className="text-orange-600" />
+                                Edit Data Kamar (Bed {editBed.bed_number})
+                            </h2>
+                            <button onClick={() => setEditBed(null)} className="text-slate-400 hover:text-slate-700">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleEditCheckIn} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal &amp; Jam Masuk</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editCheckInDate}
+                                    onChange={e => setEditCheckInDate(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Ubah Pasien</label>
+                                <select
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    value={editPatientId}
+                                    onChange={(e) => {
+                                        setEditPatientId(e.target.value);
+                                        setEditVisitorId('');
+                                        fetchVisitorForPatient(e.target.value);
+                                    }}
+                                    required
+                                >
+                                    <option value="">-- Pilih Pasien --</option>
+                                    <option value={editBed.stay_patient_id}>
+                                        {editBed.patient_name} (Pasien Saat Ini)
+                                    </option>
+                                    {patients.filter((p: any) => p.id !== editBed.stay_patient_id).map((p: any) => (
+                                        <option key={p.id} value={p.id}>{p.name} (Reg: {p.registration_number})</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Ubah Penunggu (Utama)</label>
+                                <select
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                    value={editVisitorId}
+                                    onChange={(e) => setEditVisitorId(e.target.value)}
+                                >
+                                    <option value="">-- Tidak ada penunggu / Hapus penunggu --</option>
+                                    {visitorsForPatient.map(v => (
+                                        <option key={v.id} value={v.id}>
+                                            {v.name} ({v.relation}){v.is_active ? ' - Aktif' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Pilih penunggu baru atau pilih kosongkan untuk menghapus penunggu utama.
+                                </p>
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-2 sm:gap-3 border-t border-slate-100 mt-6">
+                                <Button type="button" variant="outline" onClick={() => setEditBed(null)} className="w-full sm:w-auto">Batal</Button>
+                                <Button type="submit" disabled={editSubmitting || !editPatientId} className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700">
+                                    {editSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-6">
                 <div className="min-w-0">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Manajemen Kamar & Denah</h1>
@@ -599,7 +714,22 @@ export default function RoomsPage() {
                                                 : 'border-rose-100 bg-gradient-to-b from-rose-50/80 to-white'
                                             }`}
                                     >
-                                        <div className="absolute top-3 right-3">
+                                        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                                            {!bed.is_available && bed.stay_log_id && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditBed(bed);
+                                                        setEditCheckInDate(bed.check_in_date ? new Date(bed.check_in_date).toISOString().slice(0, 16) : getNowLocal());
+                                                        setEditPatientId(String(bed.stay_patient_id || ''));
+                                                        setEditVisitorId(bed.stay_visitors?.[0]?.id ? String(bed.stay_visitors[0].id) : '');
+                                                        fetchVisitorForPatient(String(bed.stay_patient_id || ''));
+                                                    }}
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                                                    title="Edit Data Kamar"
+                                                >
+                                                    <Pencil size={15} />
+                                                </button>
+                                            )}
                                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${bed.is_available ? 'bg-emerald-500/20 text-emerald-600' : 'bg-rose-500/20 text-rose-600'
                                                 }`}>
                                                 {bed.is_available ? <CheckCircle size={18} /> : <Info size={18} />}

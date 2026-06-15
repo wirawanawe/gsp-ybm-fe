@@ -24,6 +24,9 @@ type PatientInOutRow = {
     check_in_date: string;
     check_out_date: string | null;
     final_status: string | null;
+    gender: string | null;
+    kabupaten: string | null;
+    disease_category: string | null;
     departure_photo_path?: string | null;
     transfer_reason?: string | null;
 };
@@ -101,11 +104,10 @@ function Pagination({
                                 key={page}
                                 variant={currentPage === page ? 'default' : 'outline'}
                                 size="sm"
-                                className={`h-8 w-8 p-0 text-xs font-semibold ${
-                                    currentPage === page
+                                className={`h-8 w-8 p-0 text-xs font-semibold ${currentPage === page
                                         ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
                                         : ''
-                                }`}
+                                    }`}
                                 onClick={() => onPageChange(page)}
                             >
                                 {page}
@@ -142,6 +144,7 @@ export default function ReportsPage() {
         deceasedPatients: 0,
         referredPatients: 0
     });
+    const [patientNameSearch, setPatientNameSearch] = useState('');
     const [patientStartDate, setPatientStartDate] = useState('');
     const [patientEndDate, setPatientEndDate] = useState('');
     const [ambulanceStartDate, setAmbulanceStartDate] = useState('');
@@ -167,7 +170,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         setPatientPage(1);
-    }, [patientStartDate, patientEndDate, finalStatusFilter, patientDateType]);
+    }, [patientStartDate, patientEndDate, finalStatusFilter, patientDateType, patientNameSearch]);
 
     useEffect(() => {
         setAmbulancePage(1);
@@ -220,6 +223,7 @@ export default function ReportsPage() {
             }
 
             const params = new URLSearchParams();
+            if (patientNameSearch) params.append('name', patientNameSearch);
             if (patientStartDate) params.append('start_date', patientStartDate);
             if (patientEndDate) params.append('end_date', patientEndDate);
             if (finalStatusFilter) params.append('final_status', finalStatusFilter);
@@ -295,7 +299,7 @@ export default function ReportsPage() {
         if (activeTab === 'pasien') {
             fetchPatientReport();
         }
-    }, [activeTab, patientStartDate, patientEndDate, finalStatusFilter, patientDateType]);
+    }, [activeTab, patientStartDate, patientEndDate, finalStatusFilter, patientDateType, patientNameSearch]);
 
     useEffect(() => {
         if (activeTab === 'ambulans') {
@@ -327,7 +331,7 @@ export default function ReportsPage() {
     const downloadReport = async (
         path: string,
         filenamePrefix: string,
-        paramsObj?: { start_date?: string; end_date?: string; [key: string]: any }
+        paramsObj?: { start_date?: string; end_date?: string;[key: string]: any }
     ) => {
         try {
             const params = new URLSearchParams();
@@ -346,7 +350,7 @@ export default function ReportsPage() {
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
-            
+
             const start = paramsObj?.start_date;
             const end = paramsObj?.end_date;
             const suffix =
@@ -386,7 +390,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Ringkasan Okupansi */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-3 mb-2">
                         <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600">
@@ -423,18 +427,17 @@ export default function ReportsPage() {
                     </div>
                     <h3 className="text-2xl font-black text-slate-800">{stats.referredPatients}</h3>
                 </div>
-            </div>
+            </div> */}
 
             {/* Tabs */}
             <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit mb-6 shrink-0">
                 <button
                     type="button"
                     onClick={() => setActiveTab('pasien')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        activeTab === 'pasien'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pasien'
                             ? 'bg-white text-emerald-700 shadow-sm'
                             : 'text-slate-600 hover:text-slate-800'
-                    }`}
+                        }`}
                 >
                     <Users size={16} />
                     Pasien
@@ -442,11 +445,10 @@ export default function ReportsPage() {
                 <button
                     type="button"
                     onClick={() => setActiveTab('ambulans')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        activeTab === 'ambulans'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'ambulans'
                             ? 'bg-white text-emerald-700 shadow-sm'
                             : 'text-slate-600 hover:text-slate-800'
-                    }`}
+                        }`}
                 >
                     <Ambulance size={16} />
                     Ambulans
@@ -454,11 +456,10 @@ export default function ReportsPage() {
                 <button
                     type="button"
                     onClick={() => setActiveTab('kegiatan')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        activeTab === 'kegiatan'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'kegiatan'
                             ? 'bg-white text-emerald-700 shadow-sm'
                             : 'text-slate-600 hover:text-slate-800'
-                    }`}
+                        }`}
                 >
                     <Calendar size={16} />
                     Kegiatan
@@ -485,6 +486,12 @@ export default function ReportsPage() {
                             </h2>
                         </div>
                         <div className="flex flex-wrap items-center gap-3 shrink-0">
+                            <Input
+                                placeholder="Cari Nama Pasien..."
+                                value={patientNameSearch}
+                                onChange={e => setPatientNameSearch(e.target.value)}
+                                className="h-9 w-40 min-w-0 text-xs px-3 bg-white border border-slate-200 rounded-md focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                            />
                             <select
                                 className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                                 value={patientDateType}
@@ -518,6 +525,7 @@ export default function ReportsPage() {
                                 onChange={e => setFinalStatusFilter(e.target.value)}
                             >
                                 <option value="">Status Pasien</option>
+                                <option value="Aktif & Pulang">Aktif & Pulang</option>
                                 <option value="Sembuh">Sembuh / Pulang</option>
                                 <option value="Rujukan Lanjut">Rujukan Lanjut</option>
                                 <option value="Meninggal">Meninggal</option>
@@ -528,7 +536,7 @@ export default function ReportsPage() {
                                 variant="outline"
                                 disabled={patientInOut.length === 0}
                                 className="h-9 border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 font-semibold text-xs shrink-0"
-                                onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien', { start_date: patientStartDate, end_date: patientEndDate, final_status: finalStatusFilter, date_type: patientDateType })}
+                                onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien', { name: patientNameSearch, start_date: patientStartDate, end_date: patientEndDate, final_status: finalStatusFilter, date_type: patientDateType })}
                             >
                                 <Download size={15} />
                                 Download .xlsx
@@ -545,6 +553,9 @@ export default function ReportsPage() {
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Jenis Kelamin</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kota</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Penyakit</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kamar / Bed</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Masuk</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Keluar</th>
@@ -558,6 +569,15 @@ export default function ReportsPage() {
                                             <td className="px-6 py-4">
                                                 <div className="font-semibold text-slate-800">{row.patient_name}</div>
                                                 <div className="text-xs text-slate-500">{row.registration_number}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700 text-sm">
+                                                {row.gender || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700 text-sm">
+                                                {row.kabupaten || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700 text-sm">
+                                                {row.disease_category || '-'}
                                             </td>
                                             <td className="px-6 py-4 text-slate-700">
                                                 {row.room_number || '-'} / Bed {row.bed_number || '-'}
@@ -787,7 +807,7 @@ export default function ReportsPage() {
                                     />
                                 </div>
                             </div>
-                            <select 
+                            <select
                                 value={activityId}
                                 onChange={(e) => setActivityId(e.target.value)}
                                 className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 min-w-[150px]"

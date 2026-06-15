@@ -34,6 +34,38 @@ function StatCard({
     return content;
 }
 
+function GenderStatCard({
+    title, total, male, female, subtitle, icon: Icon, color
+}: {
+    title: string; total: number; male: number; female: number; subtitle?: string;
+    icon: any; color: string;
+}) {
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-2">
+                <div>
+                    <p className="text-sm text-slate-500 font-medium">{title}</p>
+                    <p className={`text-3xl font-bold mt-1 ${color}`}>{total}</p>
+                    {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                    <Icon size={22} className={color} />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-slate-50">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span className="text-xs text-slate-500">Laki: <span className="font-semibold text-slate-700">{male}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-pink-500"></div>
+                    <span className="text-xs text-slate-500">Perempuan: <span className="font-semibold text-slate-700">{female}</span></span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function AmbulanceCard({ data }: { data: any }) {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
@@ -347,13 +379,24 @@ export default function DashboardPage() {
             {/* Patient Stats */}
             <div>
                 <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Ringkasan Pasien</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <GenderStatCard
                         title="Pasien Aktif"
-                        value={summary?.patients?.active ?? 0}
-                        subtitle="Sedang dirawat di rumah singgah"
+                        total={summary?.patients?.active ?? 0}
+                        male={summary?.patients?.active_gender?.['Laki-laki'] ?? 0}
+                        female={summary?.patients?.active_gender?.['Perempuan'] ?? 0}
+                        subtitle="Dirawat di rumah singgah"
                         icon={Users}
                         color="text-emerald-600"
+                    />
+                    <GenderStatCard
+                        title="Pasien Pulang"
+                        total={summary?.patients?.discharged ?? 0}
+                        male={summary?.patients?.discharged_gender?.['Laki-laki'] ?? 0}
+                        female={summary?.patients?.discharged_gender?.['Perempuan'] ?? 0}
+                        subtitle="Sudah selesai dirawat"
+                        icon={CheckCircle2}
+                        color="text-sky-600"
                     />
                     <StatCard
                         title="Penunggu Aktif"
@@ -377,6 +420,80 @@ export default function DashboardPage() {
                         icon={AlertCircle}
                         color="text-amber-600"
                     />
+                </div>
+            </div>
+
+            {/* Demographics & Disease */}
+            <div>
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Demografi & Penyakit</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                <MapPin size={20} className="text-emerald-600" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-slate-800">Asal Kota Pasien</p>
+                                <p className="text-xs text-slate-400">Demografi kota asal</p>
+                            </div>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto pr-2">
+                            {summary?.patients?.cities?.length > 0 ? (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                        <tr>
+                                            <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kota/Kabupaten</th>
+                                            <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {summary.patients.cities.map((item: any, idx: number) => (
+                                            <tr key={idx}>
+                                                <td className="py-2.5 text-slate-700">{item.city}</td>
+                                                <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p className="text-sm text-slate-500 text-center py-4">Belum ada data kota</p>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                                <Activity size={20} className="text-orange-600" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-slate-800">Kategori Penyakit</p>
+                                <p className="text-xs text-slate-400">Distribusi pasien berdasarkan penyakit</p>
+                            </div>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto pr-2">
+                            {summary?.patients?.disease_categories?.length > 0 ? (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                        <tr>
+                                            <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kategori</th>
+                                            <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Jumlah Pasien</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {summary.patients.disease_categories.map((item: any, idx: number) => (
+                                            <tr key={idx}>
+                                                <td className="py-2 text-slate-800">{item.category}</td>
+                                                <td className="py-2 text-slate-800 font-semibold text-right">{item.count}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p className="text-sm text-slate-500 text-center py-4">Belum ada data penyakit</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
