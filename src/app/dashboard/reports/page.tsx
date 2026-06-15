@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn, ChevronLeft, ChevronRight, Pencil, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiUrl, authFetch } from '@/lib/api';
@@ -41,6 +41,8 @@ type AmbulanceUsageRow = {
     departure_time: string;
     return_time: string | null;
     status: string;
+    km_start: number | null;
+    km_end: number | null;
     patients?: Array<{
         id?: number;
         patient_name: string;
@@ -154,6 +156,20 @@ export default function ReportsPage() {
     const [patientDateType, setPatientDateType] = useState('');
     const [ambulanceDateType, setAmbulanceDateType] = useState('');
 
+    const [editStayLog, setEditStayLog] = useState<any | null>(null);
+    const [editCheckInDate, setEditCheckInDate] = useState<string>('');
+    const [editCheckOutDate, setEditCheckOutDate] = useState<string>('');
+    const [editFinalStatus, setEditFinalStatus] = useState<string>('');
+    const [editSubmitting, setEditSubmitting] = useState(false);
+
+    // Edit State for AmbulanceLogs
+    const [editAmbulanceLog, setEditAmbulanceLog] = useState<AmbulanceUsageRow | null>(null);
+    const [editAmbKmStart, setEditAmbKmStart] = useState<number | string>('');
+    const [editAmbKmEnd, setEditAmbKmEnd] = useState<number | string>('');
+    const [editAmbDepTime, setEditAmbDepTime] = useState<string>('');
+    const [editAmbRetTime, setEditAmbRetTime] = useState<string>('');
+    const [editAmbSubmitting, setEditAmbSubmitting] = useState(false);
+
     const [finalStatusFilter, setFinalStatusFilter] = useState<string>('');
     const [patientInOut, setPatientInOut] = useState<PatientInOutRow[]>([]);
     const [ambulanceUsage, setAmbulanceUsage] = useState<AmbulanceUsageRow[]>([]);
@@ -167,6 +183,67 @@ export default function ReportsPage() {
     const [ambulancePage, setAmbulancePage] = useState(1);
     const [activityPage, setActivityPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
+
+    const handleEditStayLog = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editStayLog) return;
+        setEditSubmitting(true);
+        try {
+            const res = await authFetch(apiUrl(`/api/rooms/stay/${editStayLog.id}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    check_in_date: editCheckInDate || undefined,
+                    check_out_date: editCheckOutDate || undefined,
+                    final_status: editFinalStatus || undefined,
+                })
+            });
+            if (res.ok) {
+                alert('Data laporan berhasil diupdate!');
+                setEditStayLog(null);
+                fetchPatientReport();
+            } else {
+                const data = await res.json();
+                alert(`Gagal: ${data.message}`);
+            }
+        } catch (err) {
+            console.error('editStayLog err:', err);
+            alert('Kesalahan jaringan');
+        } finally {
+            setEditSubmitting(false);
+        }
+    };
+
+    const handleEditAmbulanceLog = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editAmbulanceLog) return;
+        setEditAmbSubmitting(true);
+        try {
+            const res = await authFetch(apiUrl(`/api/ambulance/logs/${editAmbulanceLog.id}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    km_start: Number(editAmbKmStart) || 0,
+                    km_end: Number(editAmbKmEnd) || 0,
+                    departure_time: editAmbDepTime || undefined,
+                    return_time: editAmbRetTime || undefined,
+                })
+            });
+            if (res.ok) {
+                alert('Data laporan ambulans berhasil diupdate!');
+                setEditAmbulanceLog(null);
+                fetchAmbulanceReport();
+            } else {
+                const data = await res.json();
+                alert(`Gagal: ${data.message}`);
+            }
+        } catch (err) {
+            console.error('editAmbulanceLog err:', err);
+            alert('Kesalahan jaringan');
+        } finally {
+            setEditAmbSubmitting(false);
+        }
+    };
 
     useEffect(() => {
         setPatientPage(1);
@@ -561,6 +638,7 @@ export default function ReportsPage() {
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Waktu Keluar</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Deskripsi</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status Akhir</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -611,6 +689,20 @@ export default function ReportsPage() {
                                                     {row.final_status || 'Masih dirawat'}
                                                 </span>
                                             </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditStayLog(row);
+                                                        setEditCheckInDate(row.check_in_date ? new Date(row.check_in_date).toISOString().slice(0, 16) : '');
+                                                        setEditCheckOutDate(row.check_out_date ? new Date(row.check_out_date).toISOString().slice(0, 16) : '');
+                                                        setEditFinalStatus(row.final_status || '');
+                                                    }}
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                                                    title="Edit Data Laporan"
+                                                >
+                                                    <Pencil size={15} />
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -624,6 +716,67 @@ export default function ReportsPage() {
                         itemsPerPage={ITEMS_PER_PAGE}
                         onPageChange={setPatientPage}
                     />
+                </div>
+            )}
+
+            {/* Modal Edit Laporan */}
+            {editStayLog && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2 truncate pr-2">
+                                <Pencil className="text-orange-600" />
+                                Edit Laporan ({editStayLog.patient_name})
+                            </h2>
+                            <button onClick={() => setEditStayLog(null)} className="text-slate-400 hover:text-slate-700">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditStayLog} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Masuk</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editCheckInDate}
+                                    onChange={e => setEditCheckInDate(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Keluar</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editCheckOutDate}
+                                    onChange={e => setEditCheckOutDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Status Akhir</label>
+                                <select
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editFinalStatus}
+                                    onChange={e => setEditFinalStatus(e.target.value)}
+                                >
+                                    <option value="">Masih dirawat</option>
+                                    <option value="Sembuh">Sembuh</option>
+                                    <option value="Rujukan Lanjut">Rujukan Lanjut</option>
+                                    <option value="Transfer">Transfer</option>
+                                    <option value="Meninggal">Meninggal</option>
+                                    <option value="Pulang Paksa">Pulang Paksa</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-2 sm:gap-3 border-t border-slate-100 mt-6">
+                                <Button type="button" variant="outline" onClick={() => setEditStayLog(null)} className="w-full sm:w-auto">Batal</Button>
+                                <Button type="submit" disabled={editSubmitting} className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700">
+                                    {editSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 
@@ -698,9 +851,12 @@ export default function ReportsPage() {
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Ambulans</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Tujuan</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">KM Awal</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">KM Akhir</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Berangkat</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kembali</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -745,6 +901,8 @@ export default function ReportsPage() {
                                                     </div>
                                                 )}
                                             </td>
+                                            <td className="px-6 py-4 text-sm">{row.km_start ?? '-'}</td>
+                                            <td className="px-6 py-4 text-sm">{row.km_end ?? '-'}</td>
                                             <td className="px-6 py-4 text-sm">{formatDateTime(row.departure_time)}</td>
                                             <td className="px-6 py-4 text-sm">{formatDateTime(row.return_time)}</td>
                                             <td className="px-6 py-4">
@@ -752,6 +910,21 @@ export default function ReportsPage() {
                                                     }`}>
                                                     {row.status === 'In-Journey' ? 'Dalam Perjalanan' : 'Selesai'}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditAmbulanceLog(row);
+                                                        setEditAmbKmStart(row.km_start ?? '');
+                                                        setEditAmbKmEnd(row.km_end ?? '');
+                                                        setEditAmbDepTime(row.departure_time ? new Date(row.departure_time).toISOString().slice(0, 16) : '');
+                                                        setEditAmbRetTime(row.return_time ? new Date(row.return_time).toISOString().slice(0, 16) : '');
+                                                    }}
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                                                    title="Edit Data Ambulans"
+                                                >
+                                                    <Pencil size={15} />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -766,6 +939,70 @@ export default function ReportsPage() {
                         itemsPerPage={ITEMS_PER_PAGE}
                         onPageChange={setAmbulancePage}
                     />
+                </div>
+            )}
+
+            {/* Modal Edit Laporan Ambulans */}
+            {editAmbulanceLog && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2 truncate pr-2">
+                                <Pencil className="text-orange-600" />
+                                Edit Laporan Ambulans ({editAmbulanceLog.plate_number})
+                            </h2>
+                            <button onClick={() => setEditAmbulanceLog(null)} className="text-slate-400 hover:text-slate-700">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditAmbulanceLog} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">KM Awal</label>
+                                <input
+                                    type="number"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editAmbKmStart}
+                                    onChange={e => setEditAmbKmStart(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">KM Akhir</label>
+                                <input
+                                    type="number"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editAmbKmEnd}
+                                    onChange={e => setEditAmbKmEnd(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Berangkat</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editAmbDepTime}
+                                    onChange={e => setEditAmbDepTime(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Kembali</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                    value={editAmbRetTime}
+                                    onChange={e => setEditAmbRetTime(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="pt-4 flex justify-end gap-2 sm:gap-3 border-t border-slate-100 mt-6">
+                                <Button type="button" variant="outline" onClick={() => setEditAmbulanceLog(null)} className="w-full sm:w-auto">Batal</Button>
+                                <Button type="submit" disabled={editAmbSubmitting} className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700">
+                                    {editAmbSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 

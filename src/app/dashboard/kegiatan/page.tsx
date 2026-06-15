@@ -48,6 +48,11 @@ type Documentation = {
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'] as const;
 
+const getLocalDateString = (d: string | Date = new Date()) => {
+    const date = typeof d === 'string' ? new Date(d) : d;
+    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+};
+
 export default function UnifiedKegiatanPage() {
     const [activeTab, setActiveTab] = useState<'jadwal' | 'manage'>('jadwal');
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -74,7 +79,7 @@ export default function UnifiedKegiatanPage() {
 
     // Attendance States
     const [participants, setParticipants] = useState<Participant[]>([]);
-    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
+    const [attendanceDate, setAttendanceDate] = useState(getLocalDateString());
     const [loadingAttendance, setLoadingAttendance] = useState(false);
     const [savingAttendance, setSavingAttendance] = useState(false);
     const [newParticipantName, setNewParticipantName] = useState('');
@@ -202,7 +207,7 @@ export default function UnifiedKegiatanPage() {
         setEditingSchedule(null);
         setSchedForm({
             title: '', type: 'Taklim', day_of_week: 'Senin', 
-            scheduled_date: new Date().toISOString().slice(0, 10),
+            scheduled_date: getLocalDateString(),
             start_time: '', end_time: '', location: '', facilitator: '',
             notes: '', is_recurring: false, is_active: true
         });
@@ -213,7 +218,7 @@ export default function UnifiedKegiatanPage() {
         setEditingSchedule(s);
         setSchedForm({
             title: s.title, type: s.type, day_of_week: s.day_of_week || 'Senin',
-            scheduled_date: s.scheduled_date ? s.scheduled_date.slice(0, 10) : '',
+            scheduled_date: s.scheduled_date ? getLocalDateString(s.scheduled_date) : '',
             start_time: s.start_time || '', end_time: s.end_time || '',
             location: s.location || '', facilitator: s.facilitator || '',
             notes: s.notes || '', is_recurring: !!s.is_recurring, is_active: !!s.is_active,

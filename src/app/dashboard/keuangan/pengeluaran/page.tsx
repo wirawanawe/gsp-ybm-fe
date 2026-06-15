@@ -18,6 +18,12 @@ const fmtCurrency = (n: number) =>
 const fmtDate = (d: string) =>
     d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
+const getLocalDateString = (d: string) => {
+    if (!d) return '';
+    const date = new Date(d);
+    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+};
+
 const CAT_COLORS: Record<string, string> = {
     Operasional: 'bg-blue-100 text-blue-700',
     Konsumsi: 'bg-amber-100 text-amber-700',
@@ -73,7 +79,7 @@ export default function PengeluaranPage() {
     const openEdit = (r: any) => {
         setEditing(r);
         setForm({
-            expense_date: r.expense_date ? r.expense_date.slice(0, 10) : '',
+            expense_date: getLocalDateString(r.expense_date),
             category: r.category || 'Operasional', description: r.description || '',
             amount: r.amount || '', payment_method: r.payment_method || 'Tunai',
             receipt_number: r.receipt_number || '', person_in_charge: r.person_in_charge || '',

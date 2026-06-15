@@ -17,6 +17,12 @@ const fmtCurrency = (n: number) =>
 const fmtDate = (d: string) =>
     d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
+const getLocalDateString = (d: string) => {
+    if (!d) return '';
+    const date = new Date(d);
+    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+};
+
 const CATEGORY_COLORS: Record<string, string> = {
     Donasi: 'bg-emerald-100 text-emerald-700',
     Infaq: 'bg-teal-100 text-teal-700',
@@ -71,7 +77,7 @@ export default function PemasukanPage() {
     const openEdit = (r: any) => {
         setEditing(r);
         setForm({
-            income_date: r.income_date ? r.income_date.slice(0, 10) : '',
+            income_date: getLocalDateString(r.income_date),
             source: r.source || '', category: r.category || 'Lainnya',
             amount: r.amount || '', description: r.description || '',
             receipt_number: r.receipt_number || '',
