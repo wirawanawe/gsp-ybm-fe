@@ -1,10 +1,67 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Plus, Filter, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Filter, Loader2, Pencil, Trash2, Eye, Users, CheckCircle2, UserCircle2, MapPin, Clock, GraduationCap, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiUrl, API_BASE, authFetch } from '@/lib/api';
+import Link from 'next/link';
+
+function StatCard({
+    title, value, subtitle, icon: Icon, color, href,
+}: {
+    title: string; value: string | number; subtitle?: string;
+    icon: any; color: string; href?: string;
+}) {
+    const content = (
+        <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow ${href ? 'cursor-pointer' : ''}`}>
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-sm text-slate-500 font-medium">{title}</p>
+                    <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                    {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                    <Icon size={22} className={color} />
+                </div>
+            </div>
+        </div>
+    );
+    if (href) return <Link href={href}>{content}</Link>;
+    return content;
+}
+
+function GenderStatCard({
+    title, total, male, female, subtitle, icon: Icon, color
+}: {
+    title: string; total: number; male: number; female: number; subtitle?: string;
+    icon: any; color: string;
+}) {
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-2">
+                <div>
+                    <p className="text-sm text-slate-500 font-medium">{title}</p>
+                    <p className={`text-3xl font-bold mt-1 ${color}`}>{total}</p>
+                    {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                    <Icon size={22} className={color} />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-slate-50">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span className="text-xs text-slate-500">Laki: <span className="font-semibold text-slate-700">{male}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-pink-500"></div>
+                    <span className="text-xs text-slate-500">Perempuan: <span className="font-semibold text-slate-700">{female}</span></span>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 type Visitor = {
     id: number;
@@ -46,6 +103,10 @@ export default function VisitorsPage() {
     const [patients, setPatients] = useState<ActivePatient[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formError, setFormError] = useState('');
+    const [summary, setSummary] = useState<any>(null);
+    const [loadingSummary, setLoadingSummary] = useState(true);
+    const [summaryStartDate, setSummaryStartDate] = useState('');
+    const [summaryEndDate, setSummaryEndDate] = useState('');
 
     const [formState, setFormState] = useState<{
         patient_id: string;
@@ -148,9 +209,29 @@ export default function VisitorsPage() {
         }
     };
 
+    const fetchSummary = async () => {
+        setLoadingSummary(true);
+        try {
+            let url = '/api/reports/dashboard-summary';
+            const params = new URLSearchParams();
+            if (summaryStartDate) params.append('startDate', summaryStartDate);
+            if (summaryEndDate) params.append('endDate', summaryEndDate);
+            if (params.toString()) url += `?${params.toString()}`;
+            
+            const res = await authFetch(apiUrl(url));
+            const data = await res.json();
+            setSummary(data);
+        } catch (err) {
+            console.error('Failed to fetch summary', err);
+        } finally {
+            setLoadingSummary(false);
+        }
+    };
+
     useEffect(() => {
         fetchVisitors();
         fetchActivePatients();
+        fetchSummary();
     }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'ktp' | 'kk') => {
@@ -521,6 +602,218 @@ export default function VisitorsPage() {
                         Daftar pengunjung aktif dan riwayat pergantian penunggu.
                     </p>
                 </div>
+            </div>
+
+            {loadingSummary ? (
+                <div className="flex justify-center items-center py-6 shrink-0">
+                    <Loader2 className="animate-spin text-emerald-500" size={24} />
+                </div>
+            ) : (
+                <div className="space-y-6 mb-6 shrink-0 overflow-y-auto max-h-[500px] border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+                    {/* Visitor Stats */}
+                    <div>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+                            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Ringkasan Penunggu</h2>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <Input 
+                                    type="date" 
+                                    className="h-9 text-sm border-slate-200" 
+                                    value={summaryStartDate} 
+                                    onChange={e => setSummaryStartDate(e.target.value)} 
+                                />
+                                <span className="text-slate-400 self-center hidden sm:inline">-</span>
+                                <Input 
+                                    type="date" 
+                                    className="h-9 text-sm border-slate-200" 
+                                    value={summaryEndDate} 
+                                    onChange={e => setSummaryEndDate(e.target.value)} 
+                                />
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-9 border-slate-200"
+                                    onClick={() => fetchSummary()}
+                                >
+                                    <Filter size={14} className="mr-2" /> Filter
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <GenderStatCard
+                                title="Total Penunggu"
+                                total={summary?.visitors?.total ?? 0}
+                                male={(summary?.visitors?.active_gender?.['Laki-laki'] ?? 0) + (summary?.visitors?.inactive_gender?.['Laki-laki'] ?? 0)}
+                                female={(summary?.visitors?.active_gender?.['Perempuan'] ?? 0) + (summary?.visitors?.inactive_gender?.['Perempuan'] ?? 0)}
+                                subtitle="Total penunggu terdaftar"
+                                icon={Users}
+                                color="text-blue-600"
+                            />
+                            <GenderStatCard
+                                title="Penunggu Aktif"
+                                total={summary?.visitors?.db_active ?? 0}
+                                male={summary?.visitors?.active_gender?.['Laki-laki'] ?? 0}
+                                female={summary?.visitors?.active_gender?.['Perempuan'] ?? 0}
+                                subtitle="Status aktif mendampingi"
+                                icon={CheckCircle2}
+                                color="text-emerald-600"
+                            />
+                            <GenderStatCard
+                                title="Penunggu Tidak Aktif"
+                                total={summary?.visitors?.db_inactive ?? 0}
+                                male={summary?.visitors?.inactive_gender?.['Laki-laki'] ?? 0}
+                                female={summary?.visitors?.inactive_gender?.['Perempuan'] ?? 0}
+                                subtitle="Selesai mendampingi"
+                                icon={UserCircle2}
+                                color="text-slate-500"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Demographics */}
+                    <div>
+                        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Demografi Penunggu</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                            {/* Asal Wilayah */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                        <MapPin size={20} className="text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800 text-sm">Asal Wilayah</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.visitors?.provinces?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Provinsi</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.visitors.provinces.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.province}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Golongan Usia */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                                        <Clock size={20} className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800 text-sm">Golongan Usia</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.visitors?.age_categories?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kategori</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.visitors.age_categories.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.category}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pendidikan */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                                        <GraduationCap size={20} className="text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800 text-sm">Pendidikan</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.visitors?.educations?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Tingkat</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.visitors.educations.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.level}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pekerjaan */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <Briefcase size={20} className="text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800 text-sm">Pekerjaan</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.visitors?.occupations?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Pekerjaan</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.visitors.occupations.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.type}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 shrink-0">
                 {/* <Button
                     className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-md shadow-emerald-200"
                     onClick={() => setIsModalOpen(true)}
