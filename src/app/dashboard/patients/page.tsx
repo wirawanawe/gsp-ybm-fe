@@ -466,30 +466,30 @@ export default function PatientsPage() {
                                         <MapPin size={20} className="text-emerald-600" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-slate-800">Asal Kota Pasien</p>
-                                        <p className="text-xs text-slate-400">Demografi kota asal</p>
+                                        <p className="font-semibold text-slate-800">Asal Wilayah Pasien</p>
+                                        <p className="text-xs text-slate-400">Demografi wilayah asal (Provinsi)</p>
                                     </div>
                                 </div>
                                 <div className="max-h-48 overflow-y-auto pr-2">
-                                    {summary?.patients?.cities?.length > 0 ? (
+                                    {summary?.patients?.provinces?.length > 0 ? (
                                         <table className="w-full text-left text-sm">
                                             <thead className="sticky top-0 bg-white shadow-sm z-10">
                                                 <tr>
-                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kota/Kabupaten</th>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Provinsi</th>
                                                     <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                {summary.patients.cities.map((item: any, idx: number) => (
+                                                {summary.patients.provinces.map((item: any, idx: number) => (
                                                     <tr key={idx}>
-                                                        <td className="py-2.5 text-slate-700">{item.city}</td>
+                                                        <td className="py-2.5 text-slate-700">{item.province}</td>
                                                         <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     ) : (
-                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data kota</p>
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data wilayah</p>
                                     )}
                                 </div>
                             </div>
