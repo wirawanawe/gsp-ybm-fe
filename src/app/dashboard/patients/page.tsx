@@ -1,10 +1,67 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle, Upload, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { Search, Loader2, IdCard, AlertCircle, FileText, Eye, XCircle, Upload, CheckCircle2, Pencil, Trash2, Users, UserCircle2, MapPin, Activity, Clock, GraduationCap, Briefcase, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { apiUrl, API_BASE, authFetch } from '@/lib/api';
+import Link from 'next/link';
+
+function StatCard({
+    title, value, subtitle, icon: Icon, color, href,
+}: {
+    title: string; value: string | number; subtitle?: string;
+    icon: any; color: string; href?: string;
+}) {
+    const content = (
+        <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow ${href ? 'cursor-pointer' : ''}`}>
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-sm text-slate-500 font-medium">{title}</p>
+                    <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                    {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                    <Icon size={22} className={color} />
+                </div>
+            </div>
+        </div>
+    );
+    if (href) return <Link href={href}>{content}</Link>;
+    return content;
+}
+
+function GenderStatCard({
+    title, total, male, female, subtitle, icon: Icon, color
+}: {
+    title: string; total: number; male: number; female: number; subtitle?: string;
+    icon: any; color: string;
+}) {
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-2">
+                <div>
+                    <p className="text-sm text-slate-500 font-medium">{title}</p>
+                    <p className={`text-3xl font-bold mt-1 ${color}`}>{total}</p>
+                    {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                    <Icon size={22} className={color} />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-slate-50">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span className="text-xs text-slate-500">Laki: <span className="font-semibold text-slate-700">{male}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-pink-500"></div>
+                    <span className="text-xs text-slate-500">Perempuan: <span className="font-semibold text-slate-700">{female}</span></span>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 const DOC_TYPES = [
     { id: 'ktp', label: 'KTP Pasien' },
@@ -44,6 +101,10 @@ type Doc = { id: number; document_type: string; file_path: string };
 export default function PatientsPage() {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
+    const [summary, setSummary] = useState<any>(null);
+    const [loadingSummary, setLoadingSummary] = useState(true);
+    const [summaryStartDate, setSummaryStartDate] = useState('');
+    const [summaryEndDate, setSummaryEndDate] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [berkasPatient, setBerkasPatient] = useState<Patient | null>(null);
@@ -123,8 +184,28 @@ export default function PatientsPage() {
         }
     };
 
+    const fetchSummary = async () => {
+        setLoadingSummary(true);
+        try {
+            let url = '/api/reports/dashboard-summary';
+            const params = new URLSearchParams();
+            if (summaryStartDate) params.append('startDate', summaryStartDate);
+            if (summaryEndDate) params.append('endDate', summaryEndDate);
+            if (params.toString()) url += `?${params.toString()}`;
+            
+            const res = await authFetch(apiUrl(url));
+            const data = await res.json();
+            setSummary(data);
+        } catch (err) {
+            console.error('Failed to fetch summary', err);
+        } finally {
+            setLoadingSummary(false);
+        }
+    };
+
     useEffect(() => {
         fetchPatients();
+        fetchSummary();
     }, []);
 
     const openBerkas = async (p: Patient) => {
@@ -284,7 +365,7 @@ export default function PatientsPage() {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)] h-[calc(100vh-8rem)]">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)]">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 shrink-0">
                 <div className="min-w-0">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2 truncate">
@@ -296,6 +377,268 @@ export default function PatientsPage() {
                     </p>
                 </div>
             </div>
+
+            {loadingSummary ? (
+                <div className="flex justify-center items-center py-6">
+                    <Loader2 className="animate-spin text-emerald-500" size={24} />
+                </div>
+            ) : (
+                <div className="space-y-6 mb-6">
+                    {/* Patient Stats */}
+                    <div>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+                            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Ringkasan Pasien</h2>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <Input 
+                                    type="date" 
+                                    className="h-9 text-sm border-slate-200" 
+                                    value={summaryStartDate} 
+                                    onChange={e => setSummaryStartDate(e.target.value)} 
+                                />
+                                <span className="text-slate-400 self-center hidden sm:inline">-</span>
+                                <Input 
+                                    type="date" 
+                                    className="h-9 text-sm border-slate-200" 
+                                    value={summaryEndDate} 
+                                    onChange={e => setSummaryEndDate(e.target.value)} 
+                                />
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-9 border-slate-200"
+                                    onClick={() => fetchSummary()}
+                                >
+                                    <Filter size={14} className="mr-2" /> Filter
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <GenderStatCard
+                                title="Pasien Aktif"
+                                total={summary?.patients?.active ?? 0}
+                                male={summary?.patients?.active_gender?.['Laki-laki'] ?? 0}
+                                female={summary?.patients?.active_gender?.['Perempuan'] ?? 0}
+                                subtitle="Dirawat di rumah singgah"
+                                icon={Users}
+                                color="text-emerald-600"
+                            />
+                            <GenderStatCard
+                                title="Pasien Pulang"
+                                total={summary?.patients?.discharged ?? 0}
+                                male={summary?.patients?.discharged_gender?.['Laki-laki'] ?? 0}
+                                female={summary?.patients?.discharged_gender?.['Perempuan'] ?? 0}
+                                subtitle="Sudah selesai dirawat"
+                                icon={CheckCircle2}
+                                color="text-sky-600"
+                            />
+                            <StatCard
+                                title="Penunggu Aktif"
+                                value={summary?.visitors?.active ?? 0}
+                                subtitle="Mendampingi pasien aktif"
+                                icon={UserCircle2}
+                                color="text-violet-600"
+                                href="/dashboard/visitors"
+                            />
+                            <StatCard
+                                title="Total Pasien Terdaftar"
+                                value={summary?.patients?.total ?? 0}
+                                subtitle="Semua riwayat pasien"
+                                icon={Users}
+                                color="text-blue-600"
+                            />
+                            <StatCard
+                                title="Menunggu Verifikasi"
+                                value={summary?.patients?.pending ?? 0}
+                                subtitle="Perlu tindakan segera"
+                                icon={AlertCircle}
+                                color="text-amber-600"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Demographics & Disease */}
+                    <div>
+                        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Demografi & Penyakit</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                        <MapPin size={20} className="text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">Asal Kota Pasien</p>
+                                        <p className="text-xs text-slate-400">Demografi kota asal</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.patients?.cities?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kota/Kabupaten</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.patients.cities.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.city}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data kota</p>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                                        <Activity size={20} className="text-orange-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">Kategori Penyakit</p>
+                                        <p className="text-xs text-slate-400">Distribusi pasien berdasarkan penyakit</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.patients?.disease_categories?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kategori</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Jumlah Pasien</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.patients.disease_categories.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2 text-slate-800">{item.category}</td>
+                                                        <td className="py-2 text-slate-800 font-semibold text-right">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data penyakit</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Additional Demographics */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+                            {/* Golongan Usia */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                                        <Clock size={20} className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">Golongan Usia</p>
+                                        <p className="text-xs text-slate-400">Distribusi usia pasien</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.patients?.age_categories?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kategori Usia</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.patients.age_categories.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.category}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tingkat Pendidikan */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                                        <GraduationCap size={20} className="text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">Tingkat Pendidikan</p>
+                                        <p className="text-xs text-slate-400">Distribusi pendidikan pasien</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.patients?.educations?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Pendidikan</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.patients.educations.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.level}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pekerjaan */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <Briefcase size={20} className="text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">Pekerjaan</p>
+                                        <p className="text-xs text-slate-400">Distribusi pekerjaan pasien</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto pr-2">
+                                    {summary?.patients?.occupations?.length > 0 ? (
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                <tr>
+                                                    <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Pekerjaan</th>
+                                                    <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {summary.patients.occupations.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-2.5 text-slate-700">{item.type}</td>
+                                                        <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-sm text-slate-500 text-center py-4">Belum ada data</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3 mb-4 shrink-0">
                 <div className="relative flex-1">

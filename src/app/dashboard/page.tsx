@@ -6,10 +6,10 @@ import {
     Users, BedDouble, Ambulance, Activity, TrendingUp,
     HeartPulse, AlertCircle, CheckCircle2, Clock,
     BookOpen, Wallet, CalendarDays, MapPin, UserCircle2,
-    ChevronRight, RefreshCw
+    ChevronRight, RefreshCw, ArrowLeft, BookMarked, ListChecks,
+    Calendar, ExternalLink, Video, Image as ImageIcon, Briefcase, GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
-
 function StatCard({
     title, value, subtitle, icon: Icon, color, href,
 }: {
@@ -65,7 +65,6 @@ function GenderStatCard({
         </div>
     );
 }
-
 function AmbulanceCard({ data }: { data: any }) {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
@@ -375,7 +374,6 @@ export default function DashboardPage() {
                     {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
             </div>
-
             {/* Patient Stats */}
             <div>
                 <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Ringkasan Pasien</h2>
@@ -423,79 +421,6 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Demographics & Disease */}
-            <div>
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Demografi & Penyakit</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                                <MapPin size={20} className="text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-slate-800">Asal Kota Pasien</p>
-                                <p className="text-xs text-slate-400">Demografi kota asal</p>
-                            </div>
-                        </div>
-                        <div className="max-h-48 overflow-y-auto pr-2">
-                            {summary?.patients?.cities?.length > 0 ? (
-                                <table className="w-full text-left text-sm">
-                                    <thead className="sticky top-0 bg-white shadow-sm z-10">
-                                        <tr>
-                                            <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kota/Kabupaten</th>
-                                            <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {summary.patients.cities.map((item: any, idx: number) => (
-                                            <tr key={idx}>
-                                                <td className="py-2.5 text-slate-700">{item.city}</td>
-                                                <td className="py-2.5 text-right font-semibold text-slate-800">{item.count}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <p className="text-sm text-slate-500 text-center py-4">Belum ada data kota</p>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                                <Activity size={20} className="text-orange-600" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-slate-800">Kategori Penyakit</p>
-                                <p className="text-xs text-slate-400">Distribusi pasien berdasarkan penyakit</p>
-                            </div>
-                        </div>
-                        <div className="max-h-48 overflow-y-auto pr-2">
-                            {summary?.patients?.disease_categories?.length > 0 ? (
-                                <table className="w-full text-left text-sm">
-                                    <thead className="sticky top-0 bg-white shadow-sm z-10">
-                                        <tr>
-                                            <th className="py-2 text-slate-500 font-medium border-b border-slate-100">Kategori</th>
-                                            <th className="py-2 text-slate-500 font-medium text-right border-b border-slate-100">Jumlah Pasien</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {summary.patients.disease_categories.map((item: any, idx: number) => (
-                                            <tr key={idx}>
-                                                <td className="py-2 text-slate-800">{item.category}</td>
-                                                <td className="py-2 text-slate-800 font-semibold text-right">{item.count}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <p className="text-sm text-slate-500 text-center py-4">Belum ada data penyakit</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             {/* Room & Ambulance + Schedule */}
             <div>

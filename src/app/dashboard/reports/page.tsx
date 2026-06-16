@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn, ChevronLeft, ChevronRight, Pencil, XCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { PieChart, Download, FileSpreadsheet, TrendingUp, Users, Calendar, Ambulance, LogIn, ChevronLeft, ChevronRight, Pencil, XCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiUrl, authFetch } from '@/lib/api';
@@ -147,6 +147,9 @@ export default function ReportsPage() {
         referredPatients: 0
     });
     const [patientNameSearch, setPatientNameSearch] = useState('');
+    const [selectedRoomId, setSelectedRoomId] = useState('');
+    const [selectedBedId, setSelectedBedId] = useState('');
+    const [roomsData, setRoomsData] = useState<any[]>([]);
     const [patientStartDate, setPatientStartDate] = useState('');
     const [patientEndDate, setPatientEndDate] = useState('');
     const [ambulanceStartDate, setAmbulanceStartDate] = useState('');
@@ -247,7 +250,7 @@ export default function ReportsPage() {
 
     useEffect(() => {
         setPatientPage(1);
-    }, [patientStartDate, patientEndDate, finalStatusFilter, patientDateType, patientNameSearch]);
+    }, [patientStartDate, patientEndDate, finalStatusFilter, patientDateType, patientNameSearch, selectedRoomId, selectedBedId]);
 
     useEffect(() => {
         setAmbulancePage(1);
@@ -257,7 +260,23 @@ export default function ReportsPage() {
         setActivityPage(1);
     }, [activityStartDate, activityEndDate, activityId]);
 
-    const fetchActivities = async () => {
+    useEffect(() => {
+        // Fetch rooms data for dropdowns
+        const loadRooms = async () => {
+            try {
+                const res = await authFetch(apiUrl('/api/rooms'));
+                if (res.ok) {
+                    const data = await res.json();
+                    setRoomsData(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                console.error('Failed to load rooms:', err);
+            }
+        };
+        loadRooms();
+    }, []);
+
+    const fetchActivities = useCallback(async () => {
         try {
             const res = await authFetch(apiUrl('/api/activities'));
             const data = await res.json();
@@ -265,11 +284,11 @@ export default function ReportsPage() {
         } catch (e) {
             console.error('Failed to fetch activities', e);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchActivities();
-    }, []);
+    }, [fetchActivities]);
 
     const fetchStats = async () => {
         try {
@@ -289,6 +308,7 @@ export default function ReportsPage() {
     };
 
     const fetchPatientReport = async () => {
+        if (activeTab !== 'pasien') return;
         setLoading(true);
         setError('');
         try {
@@ -301,6 +321,8 @@ export default function ReportsPage() {
 
             const params = new URLSearchParams();
             if (patientNameSearch) params.append('name', patientNameSearch);
+            if (selectedRoomId) params.append('room_id', selectedRoomId);
+            if (selectedBedId) params.append('bed_id', selectedBedId);
             if (patientStartDate) params.append('start_date', patientStartDate);
             if (patientEndDate) params.append('end_date', patientEndDate);
             if (finalStatusFilter) params.append('final_status', finalStatusFilter);
@@ -376,7 +398,7 @@ export default function ReportsPage() {
         if (activeTab === 'pasien') {
             fetchPatientReport();
         }
-    }, [activeTab, patientStartDate, patientEndDate, finalStatusFilter, patientDateType, patientNameSearch]);
+    }, [activeTab, patientStartDate, patientEndDate, finalStatusFilter, patientDateType, patientNameSearch, selectedRoomId, selectedBedId]);
 
     useEffect(() => {
         if (activeTab === 'ambulans') {
@@ -546,29 +568,69 @@ export default function ReportsPage() {
             {/* Laporan Pasien Masuk & Keluar */}
             {activeTab === 'pasien' && (
                 <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <LogIn size={20} className="text-emerald-600 shrink-0" />
-                            <h2 className="font-bold text-slate-800 truncate">
-                                Laporan Pasien Masuk & Keluar
-                                {patientStartDate && patientEndDate ? (
-                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm">
-                                        {' '} ({patientStartDate === patientEndDate
-                                            ? formatDateOnly(patientStartDate)
-                                            : `${formatDateOnly(patientStartDate)} - ${formatDateOnly(patientEndDate)}`})
-                                    </span>
-                                ) : (
-                                    <span className="hidden sm:inline font-normal text-slate-500 text-sm"> - Semua data</span>
-                                )}
-                            </h2>
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <LogIn size={20} className="text-emerald-600 shrink-0" />
+                                <h2 className="font-bold text-slate-800 truncate">
+                                    Laporan Pasien Masuk & Keluar
+                                    {patientStartDate && patientEndDate ? (
+                                        <span className="hidden sm:inline font-normal text-slate-500 text-sm">
+                                            {' '} ({patientStartDate === patientEndDate
+                                                ? formatDateOnly(patientStartDate)
+                                                : `${formatDateOnly(patientStartDate)} - ${formatDateOnly(patientEndDate)}`})
+                                        </span>
+                                    ) : (
+                                        <span className="hidden sm:inline font-normal text-slate-500 text-sm"> - Semua data</span>
+                                    )}
+                                </h2>
+                            </div>
+                            <Button
+                                variant="outline"
+                                disabled={patientInOut.length === 0}
+                                className="h-9 border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 font-semibold text-xs shrink-0 self-start sm:self-auto"
+                                onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien', { name: patientNameSearch, room_id: selectedRoomId, bed_id: selectedBedId, start_date: patientStartDate, end_date: patientEndDate, final_status: finalStatusFilter, date_type: patientDateType })}
+                            >
+                                <Download size={15} />
+                                Download .xlsx
+                            </Button>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 shrink-0">
-                            <Input
-                                placeholder="Cari Nama Pasien..."
-                                value={patientNameSearch}
-                                onChange={e => setPatientNameSearch(e.target.value)}
-                                className="h-9 w-40 min-w-0 text-xs px-3 bg-white border border-slate-200 rounded-md focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                            />
+                        
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input 
+                                    type="text"
+                                    placeholder="Cari nama pasien..."
+                                    value={patientNameSearch}
+                                    onChange={(e) => setPatientNameSearch(e.target.value)}
+                                    className="h-9 w-48 bg-white border border-slate-200 rounded-md pl-9 pr-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm"
+                                />
+                            </div>
+                            <select
+                                value={selectedRoomId}
+                                onChange={(e) => {
+                                    setSelectedRoomId(e.target.value);
+                                    setSelectedBedId(''); // Reset bed when room changes
+                                }}
+                                className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                            >
+                                <option value="">Semua Kamar</option>
+                                {roomsData.map(r => (
+                                    <option key={r.id} value={r.id}>{r.room_number}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedBedId}
+                                onChange={(e) => setSelectedBedId(e.target.value)}
+                                disabled={!selectedRoomId}
+                                className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:bg-slate-50"
+                            >
+                                <option value="">Semua Bed</option>
+                                {selectedRoomId && roomsData.find(r => String(r.id) === String(selectedRoomId))?.beds?.map((b: any) => (
+                                    <option key={b.id} value={b.id}>{b.bed_number}</option>
+                                ))}
+                            </select>
                             <select
                                 className="h-9 px-3.5 rounded-md border border-slate-200 text-xs bg-white font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                                 value={patientDateType}
@@ -578,21 +640,21 @@ export default function ReportsPage() {
                                 <option value="check_in">Waktu Masuk</option>
                                 <option value="check_out">Waktu Keluar</option>
                             </select>
-                            <div className="flex items-center gap-2 min-w-0">
-                                <Calendar size={16} className="text-slate-500 shrink-0" />
-                                <div className="flex items-center gap-1.5">
-                                    <Input
+                            <div className="flex items-center gap-2 min-w-0 bg-white border border-slate-200 rounded-md h-9 px-2 shadow-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                                <Calendar size={14} className="text-slate-400 shrink-0" />
+                                <div className="flex items-center gap-1">
+                                    <input
                                         type="date"
                                         value={patientStartDate}
                                         onChange={e => setPatientStartDate(e.target.value)}
-                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                        className="w-28 text-xs outline-none bg-transparent"
                                     />
-                                    <span className="text-xs text-slate-500 font-medium">s.d</span>
-                                    <Input
+                                    <span className="text-[10px] text-slate-400 font-medium">s/d</span>
+                                    <input
                                         type="date"
                                         value={patientEndDate}
                                         onChange={e => setPatientEndDate(e.target.value)}
-                                        className="h-9 w-32 min-w-0 text-xs px-2"
+                                        className="w-28 text-xs outline-none bg-transparent"
                                     />
                                 </div>
                             </div>
@@ -606,18 +668,9 @@ export default function ReportsPage() {
                                 <option value="Sembuh">Sembuh / Pulang</option>
                                 <option value="Rujukan Lanjut">Rujukan Lanjut</option>
                                 <option value="Meninggal">Meninggal</option>
-                                <option value="Masih dirawat">Masih dirawat</option>
+                                <option value="Pulang Paksa">Pulang Paksa</option>
+                                <option value="Masih dirawat">Masih Dirawat</option>
                             </select>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={patientInOut.length === 0}
-                                className="h-9 border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 font-semibold text-xs shrink-0"
-                                onClick={() => downloadReport('patient-in-out/export', 'laporan-pasien', { name: patientNameSearch, start_date: patientStartDate, end_date: patientEndDate, final_status: finalStatusFilter, date_type: patientDateType })}
-                            >
-                                <Download size={15} />
-                                Download .xlsx
-                            </Button>
                         </div>
                     </div>
                     <div className="overflow-x-auto">

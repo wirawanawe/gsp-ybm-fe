@@ -40,6 +40,7 @@ type ActivePatient = {
 
 export default function VisitorsPage() {
     const [visitors, setVisitors] = useState<Visitor[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [patients, setPatients] = useState<ActivePatient[]>([]);
@@ -231,6 +232,13 @@ export default function VisitorsPage() {
             setIsSubmitting(false);
         }
     };
+
+    const filteredVisitors = visitors.filter(v => {
+        const q = searchQuery.toLowerCase();
+        return (v.name?.toLowerCase() || '').includes(q) || 
+               (v.patient_name?.toLowerCase() || '').includes(q) || 
+               (v.nik || '').includes(q);
+    });
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 flex flex-col min-h-[calc(100vh-8rem)] h-[calc(100vh-8rem)] relative">
@@ -531,6 +539,8 @@ export default function VisitorsPage() {
                     />
                     <Input
                         placeholder="Cari penunggu atau nama pasien..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10 h-11 border-slate-200"
                     />
                 </div>
@@ -547,7 +557,7 @@ export default function VisitorsPage() {
                         <Loader2 className="animate-spin" size={20} />
                         <span>Memuat data penunggu...</span>
                     </div>
-                ) : visitors.length === 0 ? (
+                ) : filteredVisitors.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full py-10 text-slate-400">
                         <p className="font-medium text-slate-600">
                             Belum ada data penunggu untuk ditampilkan.
@@ -569,7 +579,7 @@ export default function VisitorsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {visitors.map(v => (
+                            {filteredVisitors.map(v => (
                                 <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-slate-800 font-medium text-sm">
                                         {v.name}
