@@ -108,13 +108,18 @@ function RoomCard({ data }: { data: any }) {
     const pct = data?.total_beds > 0 ? Math.round((data.occupied_beds / data.total_beds) * 100) : 0;
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-                    <BedDouble size={20} className="text-violet-600" />
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+                        <BedDouble size={20} className="text-violet-600" />
+                    </div>
+                    <div>
+                        <p className="font-semibold text-slate-800">Ketersediaan Kamar</p>
+                    </div>
                 </div>
-                <div>
-                    <p className="font-semibold text-slate-800">Ketersediaan Kamar</p>
-                    <p className="text-xs text-slate-400">{data?.total_rooms ?? 0} kamar</p>
+                <div className="text-right">
+                    <p className="text-2xl font-bold text-slate-700 leading-none">{data?.total_rooms ?? 0}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">kamar</p>
                 </div>
             </div>
             <div className="mb-3">
@@ -132,11 +137,11 @@ function RoomCard({ data }: { data: any }) {
             <div className="grid grid-cols-2 gap-3 mt-4">
                 <div className="bg-emerald-50 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-emerald-600">{data?.available_beds ?? 0}</p>
-                    <p className="text-xs text-emerald-600 mt-0.5">Tersedia</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">Bed Tersedia</p>
                 </div>
                 <div className="bg-rose-50 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-rose-600">{data?.occupied_beds ?? 0}</p>
-                    <p className="text-xs text-rose-600 mt-0.5">Terisi</p>
+                    <p className="text-xs text-rose-600 mt-0.5">Bed Terisi</p>
                 </div>
             </div>
         </div>
