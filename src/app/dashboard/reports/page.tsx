@@ -163,6 +163,7 @@ export default function ReportsPage() {
     const [editCheckInDate, setEditCheckInDate] = useState<string>('');
     const [editCheckOutDate, setEditCheckOutDate] = useState<string>('');
     const [editFinalStatus, setEditFinalStatus] = useState<string>('');
+    const [editBedId, setEditBedId] = useState<string>('');
     const [editSubmitting, setEditSubmitting] = useState(false);
 
     // Edit State for AmbulanceLogs
@@ -197,8 +198,9 @@ export default function ReportsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     check_in_date: editCheckInDate || undefined,
-                    check_out_date: editCheckOutDate || undefined,
-                    final_status: editFinalStatus || undefined,
+                    check_out_date: editFinalStatus === '' ? '' : (editCheckOutDate || undefined),
+                    final_status: editFinalStatus === '' ? '' : editFinalStatus,
+                    bed_id: editBedId || undefined,
                 })
             });
             if (res.ok) {
@@ -682,6 +684,7 @@ export default function ReportsPage() {
                             <table className="w-full text-left min-w-[640px] sm:min-w-0">
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
+                                        <th className="px-6 py-3 font-semibold text-slate-700 text-sm">No.</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Pasien</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Jenis Kelamin</th>
                                         <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Kota</th>
@@ -695,8 +698,11 @@ export default function ReportsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {paginatedPatientInOut.map(row => (
+                                    {paginatedPatientInOut.map((row, index) => (
                                         <tr key={row.id} className="hover:bg-slate-50/50">
+                                            <td className="px-6 py-4 text-sm text-slate-500">
+                                                {(patientPage - 1) * ITEMS_PER_PAGE + index + 1}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="font-semibold text-slate-800">{row.patient_name}</div>
                                                 <div className="text-xs text-slate-500">{row.registration_number}</div>
@@ -749,6 +755,7 @@ export default function ReportsPage() {
                                                         setEditCheckInDate(row.check_in_date ? new Date(row.check_in_date).toISOString().slice(0, 16) : '');
                                                         setEditCheckOutDate(row.check_out_date ? new Date(row.check_out_date).toISOString().slice(0, 16) : '');
                                                         setEditFinalStatus(row.final_status || '');
+                                                        setEditBedId(String(row.bed_id || ''));
                                                     }}
                                                     className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
                                                     title="Edit Data Laporan"
@@ -800,9 +807,10 @@ export default function ReportsPage() {
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Keluar</label>
                                 <input
                                     type="datetime-local"
-                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
-                                    value={editCheckOutDate}
+                                    className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                                    value={editFinalStatus === '' ? '' : editCheckOutDate}
                                     onChange={e => setEditCheckOutDate(e.target.value)}
+                                    disabled={editFinalStatus === ''}
                                 />
                             </div>
                             <div>
@@ -821,6 +829,29 @@ export default function ReportsPage() {
                                     <option value="Lainnya">Lainnya</option>
                                 </select>
                             </div>
+                            {editStayLog?.final_status && editFinalStatus === '' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Pilih Kamar & Bed (Opsional, jika ingin pindah)</label>
+                                    <select
+                                        className="w-full h-10 px-3 rounded-md border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                        value={editBedId}
+                                        onChange={e => setEditBedId(e.target.value)}
+                                    >
+                                        <option value={editStayLog.bed_id}>Gunakan Bed Sebelumnya</option>
+                                        {roomsData.map(room => 
+                                            room.beds.map((bed: any) => (
+                                                <option 
+                                                    key={bed.id} 
+                                                    value={bed.id}
+                                                    disabled={!bed.is_available && String(bed.id) !== String(editStayLog.bed_id)}
+                                                >
+                                                    Kamar {room.room_number} - Bed {bed.bed_number} {!bed.is_available && String(bed.id) !== String(editStayLog.bed_id) ? '(Terisi)' : ''}
+                                                </option>
+                                            ))
+                                        )}
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="pt-4 flex justify-end gap-2 sm:gap-3 border-t border-slate-100 mt-6">
                                 <Button type="button" variant="outline" onClick={() => setEditStayLog(null)} className="w-full sm:w-auto">Batal</Button>
