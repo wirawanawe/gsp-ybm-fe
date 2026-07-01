@@ -20,6 +20,7 @@ type PatientInOutRow = {
     registration_number: string;
     nik: string;
     room_number: string;
+    bed_id?: number | null;
     bed_number: string;
     check_in_date: string;
     check_out_date: string | null;
