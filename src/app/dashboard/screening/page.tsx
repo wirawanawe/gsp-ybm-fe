@@ -26,6 +26,8 @@ export default function ScreeningPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState<any>({});
     const [savingEdit, setSavingEdit] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
 
     const handlePrintRegistration = (patient: any) => {
         const win = window.open('', '_blank', 'width=800,height=600');
@@ -243,14 +245,14 @@ export default function ScreeningPage() {
         }
     };
 
-    const handleVerification = async (status: string) => {
+    const handleVerification = async (status: string, cancellation_reason?: string) => {
         if (!selectedPatient) return;
 
         try {
             const res = await authFetch(apiUrl(`/api/patients/${selectedPatient.id}/verify`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status_verification: status })
+                body: JSON.stringify({ status_verification: status, cancellation_reason })
             });
             const data = await res.json();
 
@@ -467,6 +469,16 @@ export default function ScreeningPage() {
                             <Button
                                 variant="outline"
                                 className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 font-medium h-11 w-full sm:w-auto sm:px-6"
+                                onClick={() => {
+                                    setCancelReason('');
+                                    setShowCancelModal(true);
+                                }}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 font-medium h-11 w-full sm:w-auto sm:px-6"
                                 onClick={() => handleVerification('Rujukan Lain')}
                             >
                                 Rujukan Lain (Tolak)
@@ -477,6 +489,50 @@ export default function ScreeningPage() {
                             >
                                 <CheckCircle size={18} className="mr-2" />
                                 Layak Mustahik (Pre-Approve)
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Reason Modal */}
+            {showCancelModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h2 className="text-lg font-bold text-slate-800">Alasan Batal</h2>
+                            <button onClick={() => setShowCancelModal(false)} className="text-slate-400 hover:text-slate-700">
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Masukkan alasan pembatalan:
+                            </label>
+                            <textarea
+                                className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                rows={4}
+                                placeholder="Contoh: Dokumen tidak lengkap, data palsu, dll."
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                            ></textarea>
+                        </div>
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setShowCancelModal(false)}>
+                                Kembali
+                            </Button>
+                            <Button
+                                className="bg-rose-600 hover:bg-rose-700 text-white"
+                                onClick={() => {
+                                    if (!cancelReason.trim()) {
+                                        toast.error('Alasan batal harus diisi');
+                                        return;
+                                    }
+                                    handleVerification('Batal', cancelReason);
+                                    setShowCancelModal(false);
+                                }}
+                            >
+                                Konfirmasi Batal
                             </Button>
                         </div>
                     </div>

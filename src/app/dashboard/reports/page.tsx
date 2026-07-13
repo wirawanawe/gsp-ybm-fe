@@ -165,6 +165,7 @@ export default function ReportsPage() {
     const [editCheckOutDate, setEditCheckOutDate] = useState<string>('');
     const [editFinalStatus, setEditFinalStatus] = useState<string>('');
     const [editBedId, setEditBedId] = useState<string>('');
+    const [editDeparturePhoto, setEditDeparturePhoto] = useState<File | null>(null);
     const [editSubmitting, setEditSubmitting] = useState(false);
 
     // Edit State for AmbulanceLogs
@@ -194,15 +195,16 @@ export default function ReportsPage() {
         if (!editStayLog) return;
         setEditSubmitting(true);
         try {
+            const formData = new FormData();
+            if (editCheckInDate) formData.append('check_in_date', editCheckInDate);
+            if (editFinalStatus !== '' && editCheckOutDate) formData.append('check_out_date', editCheckOutDate);
+            if (editFinalStatus !== '') formData.append('final_status', editFinalStatus);
+            if (editBedId) formData.append('bed_id', editBedId);
+            if (editDeparturePhoto) formData.append('departure_photo', editDeparturePhoto);
+
             const res = await authFetch(apiUrl(`/api/rooms/stay/${editStayLog.id}`), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    check_in_date: editCheckInDate || undefined,
-                    check_out_date: editFinalStatus === '' ? '' : (editCheckOutDate || undefined),
-                    final_status: editFinalStatus === '' ? '' : editFinalStatus,
-                    bed_id: editBedId || undefined,
-                })
+                body: formData
             });
             if (res.ok) {
                 alert('Data laporan berhasil diupdate!');
@@ -757,6 +759,7 @@ export default function ReportsPage() {
                                                         setEditCheckOutDate(row.check_out_date ? new Date(row.check_out_date).toISOString().slice(0, 16) : '');
                                                         setEditFinalStatus(row.final_status || '');
                                                         setEditBedId(String(row.bed_id || ''));
+                                                        setEditDeparturePhoto(null);
                                                     }}
                                                     className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
                                                     title="Edit Data Laporan"
@@ -830,6 +833,24 @@ export default function ReportsPage() {
                                     <option value="Lainnya">Lainnya</option>
                                 </select>
                             </div>
+                            {editFinalStatus !== '' && editFinalStatus !== 'Transfer' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Upload Foto Kepulangan Baru (Opsional)
+                                        {editStayLog.departure_photo_path && (
+                                            <span className="block text-xs text-emerald-600 mt-1">
+                                                *Sudah ada foto, upload hanya jika ingin mengganti.
+                                            </span>
+                                        )}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                                        onChange={(e) => setEditDeparturePhoto(e.target.files ? e.target.files[0] : null)}
+                                    />
+                                </div>
+                            )}
                             {editStayLog?.final_status && editFinalStatus === '' && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Pilih Kamar & Bed (Opsional, jika ingin pindah)</label>
