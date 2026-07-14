@@ -197,8 +197,8 @@ export default function ReportsPage() {
         try {
             const formData = new FormData();
             if (editCheckInDate) formData.append('check_in_date', editCheckInDate);
-            if (editFinalStatus !== '' && editCheckOutDate) formData.append('check_out_date', editCheckOutDate);
-            if (editFinalStatus !== '') formData.append('final_status', editFinalStatus);
+            formData.append('check_out_date', editFinalStatus === '' ? '' : editCheckOutDate);
+            formData.append('final_status', editFinalStatus);
             if (editBedId) formData.append('bed_id', editBedId);
             if (editDeparturePhoto) formData.append('departure_photo', editDeparturePhoto);
 
