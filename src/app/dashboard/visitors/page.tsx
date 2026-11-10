@@ -183,6 +183,57 @@ export default function VisitorsPage() {
     const [docUpload, setDocUpload] = useState<{ ktp: File | null; kk: File | null }>({ ktp: null, kk: null });
     const [docUploadLoading, setDocUploadLoading] = useState(false);
     const [docUploadError, setDocUploadError] = useState('');
+    const [nikLookupLoading, setNikLookupLoading] = useState(false);
+    const [nikLookupNotice, setNikLookupNotice] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+    const handleVisitorNikLookup = async (nikToLookup?: string) => {
+        const targetNik = (nikToLookup || formState.nik).trim();
+        if (targetNik.length !== 16) {
+            setFormError('NIK harus 16 digit');
+            return;
+        }
+        setNikLookupLoading(true);
+        setFormError('');
+        setNikLookupNotice(null);
+        try {
+            const res = await authFetch(apiUrl(`/api/visitors/by-nik?nik=${targetNik}`));
+            const data = await res.json();
+            if (data && res.ok) {
+                if (!data.can_register) {
+                    setFormError(data.reason || 'Penunggu tidak dapat didaftarkan.');
+                    setNikLookupNotice({ text: data.reason, type: 'error' });
+                    return;
+                }
+                setFormState(prev => ({
+                    ...prev,
+                    name: data.name || prev.name,
+                    nik: data.nik || targetNik,
+                    phone: data.phone || prev.phone,
+                    relation: data.relation || prev.relation,
+                    gender: data.gender || prev.gender,
+                    dob: data.dob ? data.dob.slice(0, 10) : prev.dob,
+                    age: data.age !== undefined && data.age !== null ? String(data.age) : prev.age,
+                    age_category: data.age_category || prev.age_category,
+                    education: data.education || prev.education,
+                    address: data.address || prev.address,
+                    rt_rw: data.rt_rw || prev.rt_rw,
+                    kelurahan: data.kelurahan || prev.kelurahan,
+                    kecamatan: data.kecamatan || prev.kecamatan,
+                    kabupaten: data.kabupaten || prev.kabupaten,
+                    provinsi: data.provinsi || prev.provinsi,
+                    occupation: data.occupation || prev.occupation,
+                    income: data.income || prev.income,
+                }));
+                setNikLookupNotice({ text: data.reason || 'Data berhasil ditemukan dan diisi otomatis.', type: 'success' });
+            } else if (res.ok && !data) {
+                setNikLookupNotice({ text: 'Data NIK belum pernah terdaftar. Silakan lengkapi formulir.', type: 'info' });
+            }
+        } catch (err) {
+            console.error('handleVisitorNikLookup error:', err);
+        } finally {
+            setNikLookupLoading(false);
+        }
+    };
 
     const fetchVisitors = async () => {
         setLoading(true);
@@ -332,7 +383,7 @@ export default function VisitorsPage() {
                                 Registrasi Penunggu Pasien
                             </h2>
                             <button
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={() => { setIsModalOpen(false); setNikLookupNotice(null); setFormError(''); }}
                                 className="text-slate-400 hover:text-slate-700"
                             >
                                 ✕
@@ -385,20 +436,44 @@ export default function VisitorsPage() {
                                     <label className="block text-xs font-medium text-slate-600 mb-1">
                                         NIK Penunggu (16 digit)
                                     </label>
-                                    <Input
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={16}
-                                        value={formState.nik}
-                                        onChange={e => {
-                                            const val = e.target.value.replace(/\D/g, '');
-                                            setFormState(prev => ({ ...prev, nik: val }));
-                                        }}
-                                        placeholder="16 digit NIK sesuai KTP"
-                                        required
-                                    />
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={16}
+                                            value={formState.nik}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '');
+                                                setFormState(prev => ({ ...prev, nik: val }));
+                                                if (val.length === 16) {
+                                                    handleVisitorNikLookup(val);
+                                                }
+                                            }}
+                                            placeholder="16 digit NIK sesuai KTP"
+                                            required
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => handleVisitorNikLookup()}
+                                            disabled={nikLookupLoading || formState.nik.length !== 16}
+                                            className="shrink-0"
+                                        >
+                                            <Search size={16} className={nikLookupLoading ? 'animate-spin' : ''} />
+                                            <span className="hidden sm:inline ml-1.5">{nikLookupLoading ? 'Mencari...' : 'Cari'}</span>
+                                        </Button>
+                                    </div>
                                     {formState.nik && formState.nik.length !== 16 && (
                                         <p className="text-xs text-amber-600 mt-1">NIK harus tepat 16 digit</p>
+                                    )}
+                                    {nikLookupNotice && (
+                                        <div className={`mt-2 p-2 rounded text-xs ${
+                                            nikLookupNotice.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                                            nikLookupNotice.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                            'bg-blue-50 text-blue-700 border border-blue-200'
+                                        }`}>
+                                            {nikLookupNotice.text}
+                                        </div>
                                     )}
                                 </div>
                                 <div>

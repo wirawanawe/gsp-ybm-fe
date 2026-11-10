@@ -49,9 +49,12 @@ export default function DashboardRegisterPatientPage() {
     const [errorMsg, setErrorMsg] = useState('');
     const [lookupLoading, setLookupLoading] = useState(false);
     const [dataFromExisting, setDataFromExisting] = useState(false);
+    const [isFromVisitor, setIsFromVisitor] = useState(false);
     const [existingPatientId, setExistingPatientId] = useState<number | null>(null);
     const [existingDocuments, setExistingDocuments] = useState<{ id: number; document_type: string; file_path: string }[]>([]);
     const [registrationType, setRegistrationType] = useState<'pasien' | 'penunggu'>('pasien');
+    const [penungguLookupLoading, setPenungguLookupLoading] = useState(false);
+    const [penungguNotice, setPenungguNotice] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
     const [penungguForm, setPenungguForm] = useState({ 
         patient_id: '', name: '', nik: '', phone: '', relation: '',
         gender: 'Laki-laki', dob: '', age: '', age_category: '', education: '',
@@ -80,9 +83,15 @@ export default function DashboardRegisterPatientPage() {
 
     const nextStep = () => {
         if (registrationType === 'pasien') {
-            if (step === 1 && formData.nik.length !== 16) {
-                setErrorMsg('NIK harus tepat 16 digit sesuai KTP');
-                return;
+            if (step === 1) {
+                if (formData.nik.length !== 16) {
+                    setErrorMsg('NIK harus tepat 16 digit sesuai KTP');
+                    return;
+                }
+                if (!formData.name.trim()) {
+                    setErrorMsg('Nama lengkap pasien wajib diisi');
+                    return;
+                }
             }
             setErrorMsg('');
             setStep(step + 1);
@@ -157,6 +166,7 @@ export default function DashboardRegisterPatientPage() {
         setLookupLoading(true);
         setErrorMsg('');
         setDataFromExisting(false);
+        setIsFromVisitor(false);
         setExistingPatientId(null);
         setExistingDocuments([]);
         try {
@@ -193,17 +203,76 @@ export default function DashboardRegisterPatientPage() {
                     rs_rujukan: data.rs_rujukan || ''
                 });
                 setDataFromExisting(true);
-                setExistingPatientId(data.id);
+                if (data.is_from_visitor) {
+                    setIsFromVisitor(true);
+                    setExistingPatientId(null);
+                } else {
+                    setIsFromVisitor(false);
+                    setExistingPatientId(data.id);
+                }
 
                 // Ambil dokumen yang pernah diupload
-                const docsRes = await authFetch(apiUrl(`/api/patients/${data.id}/documents`));
-                const docs = await docsRes.json();
-                setExistingDocuments(Array.isArray(docs) ? docs : []);
+                if (data.id) {
+                    const docsRes = await authFetch(apiUrl(`/api/patients/${data.id}/documents`));
+                    const docs = await docsRes.json();
+                    setExistingDocuments(Array.isArray(docs) ? docs : []);
+                } else {
+                    setExistingDocuments([]);
+                }
             }
         } catch (err) {
             setErrorMsg('Gagal mencari data pasien');
         } finally {
             setLookupLoading(false);
+        }
+    };
+
+    const handlePenungguNikLookup = async (nikToLookup?: string) => {
+        const targetNik = (nikToLookup || penungguForm.nik).trim();
+        if (targetNik.length !== 16) {
+            setErrorMsg('NIK penunggu harus 16 digit');
+            return;
+        }
+        setPenungguLookupLoading(true);
+        setErrorMsg('');
+        setPenungguNotice(null);
+        try {
+            const res = await authFetch(apiUrl(`/api/visitors/by-nik?nik=${targetNik}`));
+            const data = await res.json();
+            if (data && res.ok) {
+                if (!data.can_register) {
+                    setErrorMsg(data.reason || 'Penunggu tidak dapat didaftarkan.');
+                    setPenungguNotice({ text: data.reason, type: 'error' });
+                    return;
+                }
+                setPenungguForm(prev => ({
+                    ...prev,
+                    name: data.name || prev.name,
+                    nik: data.nik || targetNik,
+                    phone: data.phone || prev.phone,
+                    relation: data.relation || prev.relation,
+                    gender: data.gender || prev.gender,
+                    dob: data.dob ? data.dob.slice(0, 10) : prev.dob,
+                    age: data.age !== undefined && data.age !== null ? String(data.age) : prev.age,
+                    age_category: data.age_category || prev.age_category,
+                    education: data.education || prev.education,
+                    address: data.address || prev.address,
+                    rt_rw: data.rt_rw || prev.rt_rw,
+                    kelurahan: data.kelurahan || prev.kelurahan,
+                    kecamatan: data.kecamatan || prev.kecamatan,
+                    kabupaten: data.kabupaten || prev.kabupaten,
+                    provinsi: data.provinsi || prev.provinsi,
+                    occupation: data.occupation || prev.occupation,
+                    income: data.income || prev.income,
+                }));
+                setPenungguNotice({ text: data.reason || 'Data penunggu berhasil ditemukan dan diisi otomatis.', type: 'success' });
+            } else if (res.ok && !data) {
+                setPenungguNotice({ text: 'Data NIK belum pernah terdaftar. Silakan lengkapi formulir.', type: 'info' });
+            }
+        } catch (err) {
+            console.error('Lookup visitor NIK error:', err);
+        } finally {
+            setPenungguLookupLoading(false);
         }
     };
 
@@ -401,7 +470,10 @@ export default function DashboardRegisterPatientPage() {
                                 {dataFromExisting && (
                                     <div className="p-3 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-xs rounded-r-md flex items-center gap-2">
                                         <CheckCircle2 size={16} />
-                                        Data pasien ditemukan dari pendaftaran sebelumnya. Silakan periksa dan lanjutkan.
+                                        {isFromVisitor
+                                            ? 'Data ditemukan dari riwayat penunggu. Silakan periksa data demografi dan lengkapi data medis pasien.'
+                                            : 'Data pasien ditemukan dari pendaftaran sebelumnya. Silakan periksa dan lanjutkan.'
+                                        }
                                     </div>
                                 )}
                                 <p className="text-xs text-slate-500">
@@ -428,15 +500,42 @@ export default function DashboardRegisterPatientPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>NIK Penunggu (16 digit)</Label>
-                                    <Input
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={16}
-                                        value={penungguForm.nik}
-                                        onChange={e => setPenungguForm(p => ({ ...p, nik: e.target.value.replace(/\D/g, '') }))}
-                                        placeholder="16 digit NIK"
-                                        required
-                                    />
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={16}
+                                            value={penungguForm.nik}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '');
+                                                setPenungguForm(p => ({ ...p, nik: val }));
+                                                if (val.length === 16) {
+                                                    handlePenungguNikLookup(val);
+                                                }
+                                            }}
+                                            placeholder="16 digit NIK"
+                                            required
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => handlePenungguNikLookup()}
+                                            disabled={penungguLookupLoading || penungguForm.nik.length !== 16}
+                                            className="shrink-0"
+                                        >
+                                            <Search size={16} className={penungguLookupLoading ? 'animate-spin' : ''} />
+                                            <span className="hidden sm:inline ml-1.5">{penungguLookupLoading ? 'Mencari...' : 'Cari'}</span>
+                                        </Button>
+                                    </div>
+                                    {penungguNotice && (
+                                        <div className={`p-2 rounded text-xs ${
+                                            penungguNotice.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                                            penungguNotice.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                            'bg-blue-50 text-blue-700 border border-blue-200'
+                                        }`}>
+                                            {penungguNotice.text}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Nama Penunggu</Label>
